@@ -1,26 +1,364 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Typography - TfL inspired font stack */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  
+  /* Base Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  
+  /* TfL Brand Colors */
+  --color-tfl-blue: var(--tfl-blue);
+  --color-tfl-red: var(--tfl-red);
+  --color-tfl-black: var(--tfl-black);
+  --color-tfl-green: var(--tfl-green);
+  --color-tfl-yellow: var(--tfl-yellow);
+  --color-surface: var(--surface);
+  
+  /* Semantic Colors */
+  --color-success: var(--tfl-green);
+  --color-success-foreground: #FFFFFF;
+  --color-warning: var(--tfl-yellow);
+  --color-warning-foreground: var(--tfl-black);
+  
+  /* shadcn/ui Colors */
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  /* Chart Colors */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  
+  /* Sidebar Colors */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Border Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.625rem;
+  
+  /* TfL Design System Colors */
+  --tfl-blue: #0019A8;    /* TfL Corporate Blue */
+  --tfl-red: #E1251B;     /* TfL Red / Bus */
+  --tfl-black: #1D1D1B;   /* Near black */
+  --tfl-green: #00A651;   /* District Line Green */
+  --tfl-yellow: #FFD200;  /* Circle Line Yellow */
+  --surface: #F5F5F5;     /* Light gray cards */
+  
+  /* shadcn/ui variables - TfL themed */
+  --background: #FFFFFF;
+  --foreground: #1D1D1B;
+  --card: #F5F5F5;
+  --card-foreground: #1D1D1B;
+  --popover: #FFFFFF;
+  --popover-foreground: #1D1D1B;
+  --primary: #0019A8;
+  --primary-foreground: #FFFFFF;
+  --secondary: #E1251B;
+  --secondary-foreground: #FFFFFF;
+  --muted: #F5F5F5;
+  --muted-foreground: #6B7280;
+  --accent: #F5F5F5;
+  --accent-foreground: #1D1D1B;
+  --destructive: #E1251B;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #0019A8;
+  --chart-1: #0019A8;
+  --chart-2: #E1251B;
+  --chart-3: #00A651;
+  --chart-4: #FFD200;
+  --chart-5: #6B7280;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1D1D1B;
+  --sidebar-primary: #0019A8;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F5F5F5;
+  --sidebar-accent-foreground: #1D1D1B;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #0019A8;
+}
+
+.dark {
+  --background: #0A0A0A;
+  --foreground: #FAFAFA;
+  --card: #171717;
+  --card-foreground: #FAFAFA;
+  --popover: #171717;
+  --popover-foreground: #FAFAFA;
+  --primary: #4A6EF5;
+  --primary-foreground: #FFFFFF;
+  --secondary: #E1251B;
+  --secondary-foreground: #FFFFFF;
+  --muted: #262626;
+  --muted-foreground: #A1A1AA;
+  --accent: #262626;
+  --accent-foreground: #FAFAFA;
+  --destructive: #E1251B;
+  --border: #262626;
+  --input: #262626;
+  --ring: #4A6EF5;
+  --chart-1: #4A6EF5;
+  --chart-2: #E1251B;
+  --chart-3: #00A651;
+  --chart-4: #FFD200;
+  --chart-5: #A1A1AA;
+  --sidebar: #171717;
+  --sidebar-foreground: #FAFAFA;
+  --sidebar-primary: #4A6EF5;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #FAFAFA;
+  --sidebar-border: #262626;
+  --sidebar-ring: #4A6EF5;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  
+  html {
+    /* Enable smooth scrolling */
+    scroll-behavior: smooth;
+    /* Prevent text size adjustment on orientation change */
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Prevent pull-to-refresh on mobile (we handle it ourselves) */
+    overscroll-behavior-y: contain;
+    /* Safe area for iPhone notch */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* TfL Typography - Headings */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight text-tfl-black;
+  }
+  
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-foreground;
+  }
+  
+  h1 {
+    @apply text-3xl md:text-4xl;
+  }
+  
+  h2 {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  h3 {
+    @apply text-xl md:text-2xl;
+  }
+  
+  h4 {
+    @apply text-lg md:text-xl;
+  }
+  
+  /* Minimum touch target size for accessibility (44x44px) */
+  button, 
+  [role="button"], 
+  input[type="submit"], 
+  input[type="button"],
+  a {
+    min-height: 44px;
+  }
+  
+  /* Focus visible styles for keyboard navigation */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* TfL Utility Classes */
+@layer utilities {
+  /* Countdown/time display - monospace with tabular numbers */
+  .countdown {
+    @apply font-mono tabular-nums font-bold;
+  }
+  
+  /* Stop codes - monospace styling */
+  .stop-code {
+    @apply font-mono tracking-wide;
+  }
+  
+  /* TfL Roundel-style badge base */
+  .tfl-badge {
+    @apply inline-flex items-center justify-center rounded-full font-bold;
+  }
+  
+  /* Bus number badge styling */
+  .line-badge {
+    @apply inline-flex items-center justify-center rounded px-2 py-0.5 bg-tfl-red text-white font-bold text-sm;
+  }
+  
+  /* Stop letter badge styling */
+  .stop-letter-badge {
+    @apply w-10 h-10 rounded-full bg-tfl-red flex items-center justify-center text-white font-bold text-lg;
+  }
+  
+  /* Safe area utilities for mobile devices */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Touch-friendly tap highlight */
+  .tap-highlight-transparent {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Prevent text selection on interactive elements */
+  .select-none-touch {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Smooth page transitions */
+  .page-transition {
+    @apply animate-in fade-in slide-in-from-bottom-2 duration-300;
+  }
+  
+  /* Card hover animation */
+  .card-hover {
+    @apply transition-all duration-200 ease-out;
+  }
+  
+  .card-hover:hover {
+    @apply -translate-y-0.5 shadow-md;
+  }
+  
+  .card-hover:active {
+    @apply translate-y-0 shadow-sm;
+  }
+  
+  /* Pulse animation for live indicator */
+  .pulse-live {
+    animation: pulse-live 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-live {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  
+  /* Skeleton shimmer animation */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--muted) 0%,
+      var(--muted-foreground) 50%,
+      var(--muted) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 640px) {
+  /* Slightly larger text for mobile readability */
+  body {
+    font-size: 16px;
+  }
+  
+  /* Ensure buttons are tap-friendly */
+  button, 
+  [role="button"] {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  /* Add breathing room to cards */
+  .card {
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .pulse-live,
+  .skeleton-shimmer {
+    animation: none !important;
+  }
 }
