@@ -146,52 +146,79 @@
 }
 
 .dark {
-  --background: #0A0A0A;
+  /* Deep dark background with subtle blue undertone */
+  --background: #09090B;
   --foreground: #FAFAFA;
-  --card: #171717;
+
+  /* Card with subtle elevation */
+  --card: #18181B;
   --card-foreground: #FAFAFA;
-  --popover: #171717;
+
+  /* Popover styling */
+  --popover: #18181B;
   --popover-foreground: #FAFAFA;
-  --primary: #4A6EF5;
+
+  /* Vibrant primary - Electric Blue */
+  --primary: #3B82F6;
   --primary-foreground: #FFFFFF;
-  --secondary: #E1251B;
+
+  /* Secondary - Bright accent */
+  --secondary: #8B5CF6;
   --secondary-foreground: #FFFFFF;
-  --muted: #262626;
+
+  /* Muted with better contrast */
+  --muted: #27272A;
   --muted-foreground: #A1A1AA;
-  --accent: #262626;
+
+  /* Accent matching muted */
+  --accent: #27272A;
   --accent-foreground: #FAFAFA;
-  --destructive: #E1251B;
-  --border: #262626;
-  --input: #262626;
-  --ring: #4A6EF5;
-  --chart-1: #4A6EF5;
-  --chart-2: #E1251B;
-  --chart-3: #00A651;
-  --chart-4: #FFD200;
+
+  /* Destructive - Bright red */
+  --destructive: #EF4444;
+
+  /* Borders - subtle but visible */
+  --border: #3F3F46;
+  --input: #27272A;
+  --ring: #3B82F6;
+
+  /* Chart colors - vibrant palette */
+  --chart-1: #3B82F6;
+  --chart-2: #EF4444;
+  --chart-3: #22C55E;
+  --chart-4: #F59E0B;
   --chart-5: #A1A1AA;
-  --sidebar: #171717;
+
+  /* Sidebar - darker than cards */
+  --sidebar: #0F0F11;
   --sidebar-foreground: #FAFAFA;
-  --sidebar-primary: #4A6EF5;
+  --sidebar-primary: #3B82F6;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #262626;
+  --sidebar-accent: #27272A;
   --sidebar-accent-foreground: #FAFAFA;
-  --sidebar-border: #262626;
-  --sidebar-ring: #4A6EF5;
+  --sidebar-border: #27272A;
+  --sidebar-ring: #3B82F6;
+
+  /* TfL colors for dark mode */
+  --tfl-blue: #60A5FA;
+  --tfl-red: #F87171;
+  --tfl-green: #4ADE80;
+  --tfl-yellow: #FBBF24;
 }
 
 /* Outside London Dark Mode Theme */
 .dark[data-city="outside-london"],
 :root.dark[data-city="outside-london"] {
-  --city-brand: #00A651;           /* Lighter green for dark mode visibility */
-  --city-accent: #00C96A;          /* Even lighter accent for dark mode */
+  --city-brand: #22C55E;           /* Vibrant green for dark mode visibility */
+  --city-accent: #4ADE80;          /* Even lighter accent for dark mode */
   --city-brand-foreground: #FFFFFF;
-  
+
   /* Override primary/secondary to match city theme */
-  --primary: #00A651;
-  --secondary: #00C96A;
-  --ring: #00A651;
-  --sidebar-primary: #00A651;
-  --sidebar-ring: #00A651;
+  --primary: #22C55E;
+  --secondary: #4ADE80;
+  --ring: #22C55E;
+  --sidebar-primary: #22C55E;
+  --sidebar-ring: #22C55E;
 }
 
 @layer base {
@@ -400,9 +427,108 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  
+
   .pulse-live,
   .skeleton-shimmer {
     animation: none !important;
   }
+}
+
+/* ============================================================================
+   MapLibre GL Map Customizations
+   ============================================================================ */
+
+/* Map container */
+.maplibregl-map {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Custom marker styles */
+.user-marker,
+.stop-marker {
+  cursor: pointer;
+}
+
+/* MapLibre attribution */
+.maplibregl-ctrl-attrib {
+  @apply bg-background/80 text-muted-foreground text-xs;
+}
+
+.maplibregl-ctrl-attrib a {
+  @apply text-primary;
+}
+
+/* MapLibre popup */
+.maplibregl-popup-content {
+  @apply bg-card text-card-foreground rounded-lg shadow-lg border border-border p-3;
+}
+
+.maplibregl-popup-close-button {
+  @apply text-muted-foreground hover:text-foreground;
+}
+
+/* MapLibre controls */
+.maplibregl-ctrl-group {
+  @apply bg-background border border-border shadow-lg;
+}
+
+.maplibregl-ctrl-group button {
+  @apply bg-background text-foreground;
+}
+
+.maplibregl-ctrl-group button:hover {
+  @apply bg-muted;
+}
+
+/* Pulse animation for user marker */
+@keyframes marker-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+.user-marker-pulse {
+  animation: marker-pulse 2s infinite;
+}
+
+/* Stop marker hover effect */
+.stop-marker:hover > div {
+  transform: scale(1.1) !important;
+}
+
+/* Legacy Leaflet support (if needed) */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0;
+}
+
+.leaflet-popup-content-wrapper {
+  @apply bg-card text-card-foreground rounded-lg shadow-lg border border-border;
+}
+
+.leaflet-popup-tip {
+  @apply bg-card;
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem;
+}
+
+/* Leaflet controls styling */
+.leaflet-control-zoom {
+  @apply border-border;
+}
+
+.leaflet-control-zoom a {
+  @apply bg-card text-foreground border-border;
+}
+
+.leaflet-control-zoom a:hover {
+  @apply bg-muted;
+}
+
+/* Attribution styling */
+.leaflet-control-attribution {
+  @apply bg-card/80 text-muted-foreground text-xs;
 }

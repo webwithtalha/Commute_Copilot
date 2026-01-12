@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CitySelector } from "./city-selector";
+import { ThemeToggle } from "./theme-toggle";
 import { useCity } from "@/context/city-context";
 
 interface HeaderProps {
@@ -57,8 +58,11 @@ export function Header({ className }: HeaderProps) {
           </div>
         </Link>
 
-        {/* City Selector */}
-        <CitySelector />
+        {/* Right side controls */}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <CitySelector />
+        </div>
       </div>
     </header>
   );

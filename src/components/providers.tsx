@@ -4,7 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { ErrorBoundary } from './error-boundary';
 import { NetworkStatus } from './network-status';
+import { ThemeProvider } from './theme-provider';
 import { CityProvider } from '@/context/city-context';
+import { FavoritesProvider } from '@/context/favorites-context';
+import { RecentsProvider } from '@/context/recents-context';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -35,14 +38,20 @@ export function Providers({ children }: ProvidersProps) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <CityProvider>
-        <ErrorBoundary>
-          {children}
-          <NetworkStatus />
-        </ErrorBoundary>
-      </CityProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <CityProvider>
+          <FavoritesProvider>
+            <RecentsProvider>
+              <ErrorBoundary>
+                {children}
+                <NetworkStatus />
+              </ErrorBoundary>
+            </RecentsProvider>
+          </FavoritesProvider>
+        </CityProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

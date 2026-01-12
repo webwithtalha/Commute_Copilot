@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -33,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${inter.variable} ${geistMono.variable} font-sans antialiased`}
       >

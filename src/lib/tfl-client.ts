@@ -327,6 +327,52 @@ export async function getLineStatusByMode(
 }
 
 // ============================================================================
+// Nearby Stops
+// ============================================================================
+
+export interface GetNearbyStopsOptions {
+  /** Latitude */
+  lat: number;
+  /** Longitude */
+  lon: number;
+  /** Radius in meters (default: 500) */
+  radius?: number;
+  /** Stop types to include */
+  stopTypes?: string[];
+  /** Transport modes to filter by */
+  modes?: string[];
+}
+
+/**
+ * Get stops near a location
+ * @param options Options for fetching nearby stops
+ * @returns Array of nearby stops
+ */
+export async function getNearbyStops(
+  options: GetNearbyStopsOptions
+): Promise<ApiResponse<TflStopPoint[]>> {
+  const {
+    lat,
+    lon,
+    radius = 500,
+    stopTypes = ['NaptanPublicBusCoachTram'],
+    modes = ['bus']
+  } = options;
+
+  return tflFetch<TflStopPoint[]>(
+    '/StopPoint',
+    {
+      lat,
+      lon,
+      radius,
+      stopTypes: stopTypes.join(','),
+      modes: modes.join(','),
+    },
+    { revalidate: 60 } // Cache for 1 minute
+  );
+}
+
+// ============================================================================
 // Data Transformation Helpers
 // ============================================================================
 
@@ -426,6 +472,7 @@ export const tflClient = {
   getStopDetails,
   getChildStops,
   getArrivals,
+  getNearbyStops,
   getLineStatus,
   getLineStatusByMode,
   transformToStop,

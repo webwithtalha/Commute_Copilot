@@ -43,6 +43,18 @@ export interface GetArrivalsOptions {
   maxResults?: number;
 }
 
+/** Options for getting nearby stops */
+export interface GetNearbyStopsOptions {
+  /** Latitude */
+  lat: number;
+  /** Longitude */
+  lon: number;
+  /** Radius in meters (default: 500) */
+  radius?: number;
+  /** Maximum number of results */
+  maxResults?: number;
+}
+
 /**
  * Unified interface that all transit providers must implement.
  * This ensures consistent behavior regardless of the underlying data source.
@@ -74,6 +86,13 @@ export interface TransitProvider {
    * @returns Array of arrivals normalized to common Arrival type, sorted by time
    */
   getArrivals(options: GetArrivalsOptions): Promise<ApiResponse<Arrival[]>>;
+
+  /**
+   * Get stops near a location
+   * @param options Options including lat, lon, and radius
+   * @returns Array of nearby stops normalized to common Stop type
+   */
+  getNearbyStops(options: GetNearbyStopsOptions): Promise<ApiResponse<Stop[]>>;
 }
 
 // ============================================================================
@@ -185,6 +204,20 @@ export async function getArrivalsInCity(
 ): Promise<ApiResponse<Arrival[]>> {
   const provider = getProviderByCityId(cityId);
   return provider.getArrivals(options);
+}
+
+/**
+ * Get nearby stops in a specific city
+ * @param cityId City identifier
+ * @param options Nearby stops options
+ * @returns Array of nearby stops
+ */
+export async function getNearbyStopsInCity(
+  cityId: string,
+  options: GetNearbyStopsOptions
+): Promise<ApiResponse<Stop[]>> {
+  const provider = getProviderByCityId(cityId);
+  return provider.getNearbyStops(options);
 }
 
 // ============================================================================

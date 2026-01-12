@@ -6,16 +6,18 @@
  */
 
 import type { Stop, Arrival, ApiResponse, TflSearchMatch } from '@/types/tfl';
-import type { 
-  TransitProvider, 
-  SearchStopsOptions, 
-  GetStopDetailsOptions, 
-  GetArrivalsOptions 
+import type {
+  TransitProvider,
+  SearchStopsOptions,
+  GetStopDetailsOptions,
+  GetArrivalsOptions,
+  GetNearbyStopsOptions
 } from './index';
-import { 
+import {
   searchStops as tflSearchStops,
   getStopDetails as tflGetStopDetails,
   getArrivals as tflGetArrivals,
+  getNearbyStops as tflGetNearbyStops,
   transformToStop,
   transformArrivals,
 } from '@/lib/tfl-client';
@@ -118,6 +120,38 @@ export class TflProvider implements TransitProvider {
     return {
       success: true,
       data: limitedArrivals,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Get nearby stops using TfL API
+   */
+  async getNearbyStops(options: GetNearbyStopsOptions): Promise<ApiResponse<Stop[]>> {
+    const { lat, lon, radius = 500, maxResults } = options;
+
+    const result = await tflGetNearbyStops({
+      lat,
+      lon,
+      radius,
+      modes: ['bus'],
+    });
+
+    if (!result.success) {
+      return result;
+    }
+
+    // Transform TfL stop points to normalized Stop type
+    let stops = result.data.map((stopPoint) => transformToStop(stopPoint));
+
+    // Apply maxResults limit if specified
+    if (maxResults) {
+      stops = stops.slice(0, maxResults);
+    }
+
+    return {
+      success: true,
+      data: stops,
       timestamp: new Date().toISOString(),
     };
   }

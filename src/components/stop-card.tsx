@@ -2,8 +2,10 @@
 
 import { cn } from "@/lib/utils";
 import { StopLetterBadge } from "./stop-letter-badge";
+import { FavoriteButton } from "./favorite-button";
 import { Badge } from "@/components/ui/badge";
 import { Bus, ArrowRight } from "lucide-react";
+import { useFavorites } from "@/context";
 import type { Stop } from "@/types/tfl";
 
 interface StopCardProps {
@@ -15,37 +17,47 @@ interface StopCardProps {
   isActive?: boolean;
   /** Additional CSS classes */
   className?: string;
+  /** Whether to show the favorite button */
+  showFavorite?: boolean;
 }
 
 /**
  * Search result card for displaying stop information.
- * Shows stop letter badge, name, code, and direction.
+ * Shows stop letter badge, name, code, direction, and favorite button.
  */
 export function StopCard({
   stop,
   onClick,
   isActive = false,
   className,
+  showFavorite = true,
 }: StopCardProps) {
   const hasBus = stop.modes.includes("bus");
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const stopIsFavorite = isFavorite(stop.id);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       className={cn(
         "w-full flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-lg border text-left",
         "transition-all duration-200 ease-out",
         "hover:bg-muted/50 hover:border-primary/30 hover:shadow-sm",
-        "active:scale-[0.99] active:shadow-none",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        "tap-highlight-transparent select-none-touch",
         isActive && "border-primary bg-primary/5",
         className
       )}
-      aria-label={`${stop.name}${stop.stopCode ? `, Stop code ${stop.stopCode}` : ""}${stop.direction ? `, towards ${stop.direction}` : ""}`}
     >
-      <StopLetterBadge letter={stop.stopLetter} size="md" />
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "flex items-start gap-3 sm:gap-4 flex-1 min-w-0 text-left",
+          "active:scale-[0.99]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "tap-highlight-transparent select-none-touch"
+        )}
+        aria-label={`${stop.name}${stop.stopCode ? `, Stop code ${stop.stopCode}` : ""}${stop.direction ? `, towards ${stop.direction}` : ""}`}
+      >
+        <StopLetterBadge letter={stop.stopLetter} size="md" />
 
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold text-foreground truncate text-sm sm:text-base">
@@ -114,11 +126,21 @@ export function StopCard({
         </div>
       </div>
 
-      <ArrowRight 
-        className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground flex-shrink-0 mt-0.5 sm:mt-1 transition-transform group-hover:translate-x-0.5" 
-        aria-hidden="true"
-      />
-    </button>
+        <ArrowRight
+          className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground flex-shrink-0 mt-0.5 sm:mt-1"
+          aria-hidden="true"
+        />
+      </button>
+
+      {showFavorite && (
+        <FavoriteButton
+          isFavorite={stopIsFavorite}
+          onToggle={() => toggleFavorite(stop)}
+          size="sm"
+          className="flex-shrink-0 mt-0.5"
+        />
+      )}
+    </div>
   );
 }
 

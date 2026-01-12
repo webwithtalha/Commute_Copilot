@@ -15,11 +15,12 @@
  */
 
 import type { Stop, Arrival, ApiResponse } from '@/types/tfl';
-import type { 
-  TransitProvider, 
-  SearchStopsOptions, 
-  GetStopDetailsOptions, 
-  GetArrivalsOptions 
+import type {
+  TransitProvider,
+  SearchStopsOptions,
+  GetStopDetailsOptions,
+  GetArrivalsOptions,
+  GetNearbyStopsOptions
 } from './index';
 import type { BodsCityConfig } from '@/config/cities';
 import { CITIES, isBodsCityConfig, getCityOrDefault } from '@/config/cities';
@@ -364,6 +365,37 @@ export class BodsProvider implements TransitProvider {
     }
 
     return gtfsResult;
+  }
+
+  /**
+   * Get nearby stops using NaPTAN/OSM data
+   */
+  async getNearbyStops(options: GetNearbyStopsOptions): Promise<ApiResponse<Stop[]>> {
+    const { lat, lon, radius = 500, maxResults = 20 } = options;
+
+    console.log(`[BODS] Fetching nearby stops at (${lat}, ${lon}) within ${radius}m`);
+
+    const result = await naptanClient.searchStopsByLocation(lat, lon, radius);
+
+    if (!result.success) {
+      console.warn(`[BODS] Nearby stops search failed: ${result.error}`);
+      return {
+        success: true,
+        data: [],
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // Limit results
+    const stops = result.data.slice(0, maxResults);
+
+    console.log(`[BODS] Found ${stops.length} nearby stops`);
+
+    return {
+      success: true,
+      data: stops,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   // ============================================================================

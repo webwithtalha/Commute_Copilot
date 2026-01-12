@@ -363,12 +363,103 @@ out body 1;
   return { success: true, data: null, timestamp: new Date().toISOString() };
 }
 
+/**
+ * Search for bus stops by location using Overpass API
+ */
+export async function searchStopsByLocation(
+  lat: number,
+  lon: number,
+  radius: number = 500
+): Promise<ApiResponse<Stop[]>> {
+  console.log(`[NaPTAN] Searching for stops near (${lat}, ${lon}) within ${radius}m`);
+  const startTime = Date.now();
+
+  try {
+    // Overpass query to find bus stops within a radius
+    const query = `
+[out:json][timeout:10];
+(
+  node["highway"="bus_stop"](around:${radius},${lat},${lon});
+  node["public_transport"="platform"]["bus"="yes"](around:${radius},${lat},${lon});
+);
+out body;
+`.trim();
+
+    const response = await fetch(OVERPASS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `data=${encodeURIComponent(query)}`,
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (!response.ok) {
+      console.error(`[NaPTAN] Overpass error: ${response.status}`);
+      return { success: true, data: [], timestamp: new Date().toISOString() };
+    }
+
+    const data = await response.json() as OverpassResponse;
+    console.log(`[NaPTAN] Overpass returned ${data.elements?.length || 0} stops in ${Date.now() - startTime}ms`);
+
+    if (!data.elements || data.elements.length === 0) {
+      return { success: true, data: [], timestamp: new Date().toISOString() };
+    }
+
+    // Transform results
+    const seenIds = new Set<string>();
+    const stops: Stop[] = [];
+
+    for (const element of data.elements) {
+      if (!element.lat || !element.lon) continue;
+
+      const tags = element.tags || {};
+
+      const mockResult: NominatimResult = {
+        place_id: 0,
+        osm_type: 'node',
+        osm_id: element.id,
+        lat: String(element.lat),
+        lon: String(element.lon),
+        class: 'highway',
+        type: 'bus_stop',
+        name: tags['naptan:CommonName'] || tags.name || 'Bus Stop',
+        display_name: '',
+      };
+
+      const stop = transformNominatimToStop(mockResult, tags);
+
+      if (!seenIds.has(stop.id)) {
+        seenIds.add(stop.id);
+        stops.push(stop);
+      }
+    }
+
+    // Sort by distance from center
+    stops.sort((a, b) => {
+      const distA = Math.sqrt(Math.pow(a.lat - lat, 2) + Math.pow(a.lon - lon, 2));
+      const distB = Math.sqrt(Math.pow(b.lat - lat, 2) + Math.pow(b.lon - lon, 2));
+      return distA - distB;
+    });
+
+    console.log(`[NaPTAN] Returning ${stops.length} nearby stops in ${Date.now() - startTime}ms`);
+
+    return {
+      success: true,
+      data: stops,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('[NaPTAN] Location search error:', error);
+    return { success: true, data: [], timestamp: new Date().toISOString() };
+  }
+}
+
 // ============================================================================
 // Export
 // ============================================================================
 
 export const naptanClient = {
   searchStopsByName,
+  searchStopsByLocation,
   getStopDetails,
   getStopByStopCode,
 };

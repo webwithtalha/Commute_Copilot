@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useCallback } from "react";
+import { use, useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Header,
@@ -12,6 +12,7 @@ import {
   ErrorState,
 } from "@/components";
 import { useStopDetails, useArrivals } from "@/hooks";
+import { useRecents } from "@/context";
 import { ArrowLeft, Share2, Check, MapPin, RefreshCw } from "lucide-react";
 
 interface StopPageProps {
@@ -22,6 +23,7 @@ export default function StopPage({ params }: StopPageProps) {
   const { id } = use(params);
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const { addRecent } = useRecents();
 
   // Fetch stop details
   const {
@@ -30,6 +32,13 @@ export default function StopPage({ params }: StopPageProps) {
     error: stopError,
     refetch: refetchStop,
   } = useStopDetails(id);
+
+  // Track this stop as recently viewed
+  useEffect(() => {
+    if (stop && !isLoadingStop) {
+      addRecent(stop);
+    }
+  }, [stop, isLoadingStop, addRecent]);
 
   // Fetch arrivals with auto-refresh
   const {

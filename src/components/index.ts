@@ -9,6 +9,7 @@ export { SearchInput } from "./search-input";
 export { Header } from "./header";
 export { Footer } from "./footer";
 export { CitySelector } from "./city-selector";
+export { FavoriteButton } from "./favorite-button";
 
 // Error and loading states
 export { ErrorState } from "./error-state";
@@ -18,6 +19,14 @@ export { LoadingPage, LoadingSpinner } from "./loading-page";
 
 // Providers
 export { Providers } from "./providers";
+export { ThemeProvider } from "./theme-provider";
+export { ThemeToggle } from "./theme-toggle";
+
+// Layout components
+export { NavItem, Sidebar, MobileNav, MainLayout, type SidebarView } from "./layout";
+
+// View components
+export { SearchView, FavoritesView, RecentsView, MapView } from "./views";
 
 // Re-export shadcn/ui components
 export { Badge } from "./ui/badge";
