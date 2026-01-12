@@ -19,9 +19,9 @@ const sizeClasses = {
   lg: "px-3 py-1.5 text-base min-w-[48px]",
 };
 
-// TfL mode colors
+// Mode colors - bus uses city-brand for multi-city support
 const modeColors = {
-  bus: "bg-tfl-red",
+  bus: "bg-city-brand text-city-brand-foreground",
   tube: "bg-tfl-blue",
   dlr: "bg-[#00A0A0]",
   overground: "bg-[#EF7B10]",
@@ -30,8 +30,8 @@ const modeColors = {
 };
 
 /**
- * TfL-style badge for bus/line numbers.
- * Red rectangle badge for buses, different colors for other modes.
+ * Transit badge for bus/line numbers.
+ * Uses city-brand color for buses, TfL-specific colors for other modes.
  */
 export function LineBadge({
   lineNumber,

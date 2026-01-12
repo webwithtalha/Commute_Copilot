@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { CitySelector } from "./city-selector";
+import { useCity } from "@/context/city-context";
 
 interface HeaderProps {
   /** Additional CSS classes */
@@ -9,10 +11,12 @@ interface HeaderProps {
 }
 
 /**
- * App header with logo and navigation.
- * Features a TfL roundel-inspired logo design.
+ * App header with logo, city selector, and navigation.
+ * Features a dynamic roundel-inspired logo that changes color based on the selected city.
  */
 export function Header({ className }: HeaderProps) {
+  const { city, isHydrated } = useCity();
+
   return (
     <header
       className={cn(
@@ -20,14 +24,20 @@ export function Header({ className }: HeaderProps) {
         className
       )}
     >
-      <div className="container flex h-16 items-center px-4 max-w-3xl mx-auto">
+      <div className="container flex h-16 items-center justify-between px-4 max-w-3xl mx-auto">
         <Link href="/" className="flex items-center gap-3 group">
-          {/* TfL Roundel-inspired logo */}
+          {/* Roundel-inspired logo - colors adapt to selected city */}
           <div className="relative w-10 h-10">
-            {/* Red circle */}
-            <div className="absolute inset-0 rounded-full bg-tfl-red" />
-            {/* Blue bar */}
-            <div className="absolute top-1/2 left-0 right-0 h-3 bg-tfl-blue -translate-y-1/2" />
+            {/* Brand color circle */}
+            <div
+              className="absolute inset-0 rounded-full transition-colors duration-300"
+              style={{ backgroundColor: isHydrated ? city.brandColor : '#E1251B' }}
+            />
+            {/* Accent color bar */}
+            <div
+              className="absolute top-1/2 left-0 right-0 h-3 -translate-y-1/2 transition-colors duration-300"
+              style={{ backgroundColor: isHydrated ? city.accentColor : '#0019A8' }}
+            />
             {/* Logo text inside bar */}
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-white font-bold text-xs tracking-tight">
@@ -38,7 +48,7 @@ export function Header({ className }: HeaderProps) {
 
           {/* App name */}
           <div className="flex flex-col">
-            <span className="font-bold text-lg leading-none tracking-tight text-foreground group-hover:text-tfl-blue transition-colors">
+            <span className="font-bold text-lg leading-none tracking-tight text-foreground group-hover:text-primary transition-colors">
               Commute Copilot
             </span>
             <span className="text-xs text-muted-foreground leading-tight">
@@ -46,6 +56,9 @@ export function Header({ className }: HeaderProps) {
             </span>
           </div>
         </Link>
+
+        {/* City Selector */}
+        <CitySelector />
       </div>
     </header>
   );

@@ -157,7 +157,7 @@ export default function HomePage() {
                 Find your bus stop
               </h2>
               <p className="text-muted-foreground max-w-md text-sm sm:text-base px-4">
-                Enter a stop name like &quot;Oxford Street&quot; or a 5-digit code like &quot;47829&quot; to see live arrivals
+                Search for a bus stop by name or location to see live arrivals
               </p>
             </div>
           )}

@@ -2,13 +2,16 @@
 
 import { useQuery } from '@tanstack/react-query';
 import type { Stop, ApiResponse } from '@/types/tfl';
+import { useCity } from '@/context/city-context';
 
 /**
- * Response shape from /api/tfl/stop/[id]
+ * Response shape from /api/transit/stop/[id]
  */
 interface StopDetailsResponse {
   stop: Stop;
   children?: Stop[];
+  city: string;
+  provider: string;
 }
 
 /**
@@ -34,14 +37,17 @@ interface UseStopDetailsParams {
 export function useStopDetails(stopId: string | null, params: UseStopDetailsParams = {}) {
   const { enabled = true } = params;
 
+  // Get current city from context
+  const { cityId } = useCity();
+
   const shouldFetch = enabled && Boolean(stopId?.trim());
 
   const queryResult = useQuery<StopDetailsResponse>({
-    queryKey: ['stop', 'details', stopId],
+    queryKey: ['stop', 'details', stopId, cityId],
     queryFn: async () => {
       if (!stopId) throw new Error('Stop ID is required');
 
-      const response = await fetch(`/api/tfl/stop/${encodeURIComponent(stopId)}`);
+      const response = await fetch(`/api/transit/stop/${encodeURIComponent(stopId)}?city=${encodeURIComponent(cityId)}`);
       const data: ApiResponse<StopDetailsResponse> = await response.json();
 
       if (!response.ok || !data.success) {

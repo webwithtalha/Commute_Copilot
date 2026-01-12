@@ -20,6 +20,11 @@
   --color-tfl-yellow: var(--tfl-yellow);
   --color-surface: var(--surface);
   
+  /* City-Specific Brand Colors (dynamic based on selected city) */
+  --color-city-brand: var(--city-brand);
+  --color-city-accent: var(--city-accent);
+  --color-city-brand-foreground: var(--city-brand-foreground);
+  
   /* Semantic Colors */
   --color-success: var(--tfl-green);
   --color-success-foreground: #FFFFFF;
@@ -82,6 +87,11 @@
   --tfl-yellow: #FFD200;  /* Circle Line Yellow */
   --surface: #F5F5F5;     /* Light gray cards */
   
+  /* City-Specific Brand Colors (defaults to London/TfL) */
+  --city-brand: #E1251B;           /* TfL Red by default */
+  --city-accent: #0019A8;          /* TfL Blue by default */
+  --city-brand-foreground: #FFFFFF;
+  
   /* shadcn/ui variables - TfL themed */
   --background: #FFFFFF;
   --foreground: #1D1D1B;
@@ -116,6 +126,25 @@
   --sidebar-ring: #0019A8;
 }
 
+/* ============================================================================
+   City Theme Overrides
+   ============================================================================
+   These override the default city colors when data-city attribute is set.
+   Set via: document.documentElement.dataset.city = 'outside-london'
+   ============================================================================ */
+
+/* Outside London - Bus Green Theme */
+:root[data-city="outside-london"] {
+  --city-brand: #007D4A;           /* First Bus Green */
+  --city-accent: #00A651;          /* First Bus Light Green */
+  --city-brand-foreground: #FFFFFF;
+  
+  /* Override primary/secondary to match city theme */
+  --primary: #007D4A;
+  --secondary: #00A651;
+  --ring: #007D4A;
+}
+
 .dark {
   --background: #0A0A0A;
   --foreground: #FAFAFA;
@@ -148,6 +177,21 @@
   --sidebar-accent-foreground: #FAFAFA;
   --sidebar-border: #262626;
   --sidebar-ring: #4A6EF5;
+}
+
+/* Outside London Dark Mode Theme */
+.dark[data-city="outside-london"],
+:root.dark[data-city="outside-london"] {
+  --city-brand: #00A651;           /* Lighter green for dark mode visibility */
+  --city-accent: #00C96A;          /* Even lighter accent for dark mode */
+  --city-brand-foreground: #FFFFFF;
+  
+  /* Override primary/secondary to match city theme */
+  --primary: #00A651;
+  --secondary: #00C96A;
+  --ring: #00A651;
+  --sidebar-primary: #00A651;
+  --sidebar-ring: #00A651;
 }
 
 @layer base {
@@ -234,14 +278,14 @@
     @apply inline-flex items-center justify-center rounded-full font-bold;
   }
   
-  /* Bus number badge styling */
+  /* Bus number badge styling - uses city brand color */
   .line-badge {
-    @apply inline-flex items-center justify-center rounded px-2 py-0.5 bg-tfl-red text-white font-bold text-sm;
+    @apply inline-flex items-center justify-center rounded px-2 py-0.5 bg-city-brand text-city-brand-foreground font-bold text-sm;
   }
   
-  /* Stop letter badge styling */
+  /* Stop letter badge styling - uses city brand color */
   .stop-letter-badge {
-    @apply w-10 h-10 rounded-full bg-tfl-red flex items-center justify-center text-white font-bold text-lg;
+    @apply w-10 h-10 rounded-full bg-city-brand flex items-center justify-center text-city-brand-foreground font-bold text-lg;
   }
   
   /* Safe area utilities for mobile devices */

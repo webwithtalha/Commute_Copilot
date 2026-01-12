@@ -3,13 +3,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useCallback } from 'react';
 import type { Stop, ApiResponse } from '@/types/tfl';
+import { useCity } from '@/context/city-context';
 
 /**
- * Response shape from /api/tfl/stops/search
+ * Response shape from /api/transit/stops/search
  */
 interface SearchResponse {
   total: number;
   query: string;
+  city: string;
+  provider: string;
   stops: Stop[];
 }
 
@@ -50,6 +53,9 @@ export function useSearch(query: string, params: UseSearchParams = {}) {
     enabled = true,
   } = params;
 
+  // Get current city from context
+  const { cityId } = useCity();
+
   // Debounced query state
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
@@ -67,15 +73,17 @@ export function useSearch(query: string, params: UseSearchParams = {}) {
   const shouldSearch = enabled && trimmedQuery.length >= 2;
 
   const queryResult = useQuery<SearchResponse>({
-    queryKey: ['stops', 'search', trimmedQuery, modes, maxResults],
+    // Include cityId first in key so city changes invalidate cache properly
+    queryKey: ['stops', 'search', cityId, trimmedQuery, modes, maxResults],
     queryFn: async () => {
       const searchParams = new URLSearchParams({
         q: trimmedQuery,
         modes,
         maxResults: maxResults.toString(),
+        city: cityId,
       });
 
-      const response = await fetch(`/api/tfl/stops/search?${searchParams}`);
+      const response = await fetch(`/api/transit/stops/search?${searchParams}`);
       const data: ApiResponse<SearchResponse> = await response.json();
 
       if (!response.ok || !data.success) {
@@ -91,8 +99,15 @@ export function useSearch(query: string, params: UseSearchParams = {}) {
     staleTime: 5 * 60 * 1000,
     // Keep in cache for 10 minutes
     gcTime: 10 * 60 * 1000,
-    // Placeholder data while loading
-    placeholderData: (previousData) => previousData,
+    // Don't use placeholder from different city searches
+    placeholderData: (previousData, previousQuery) => {
+      // Only use previous data if it's from the same city
+      const prevCityId = previousQuery?.queryKey?.[2];
+      if (prevCityId === cityId) {
+        return previousData;
+      }
+      return undefined;
+    },
   });
 
   // Clear function to reset the search

@@ -3,14 +3,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import type { Arrival, ApiResponse } from '@/types/tfl';
+import { useCity } from '@/context/city-context';
 
 /**
- * Response shape from /api/tfl/arrivals/[id]
+ * Response shape from /api/transit/arrivals/[id]
  */
 interface ArrivalsResponse {
   stopId: string;
   arrivals: (Arrival & { timeFormatted: string })[];
   count: number;
+  city: string;
+  provider: string;
 }
 
 /**
@@ -53,6 +56,9 @@ export function useArrivals(stopId: string | null, params: UseArrivalsParams = {
     enabled = true,
   } = params;
 
+  // Get current city from context
+  const { cityId } = useCity();
+
   const queryClient = useQueryClient();
   
   // Track seconds until next refresh for UI countdown
@@ -63,11 +69,12 @@ export function useArrivals(stopId: string | null, params: UseArrivalsParams = {
   const shouldFetch = enabled && Boolean(stopId?.trim());
 
   const queryResult = useQuery<ArrivalsResponse>({
-    queryKey: ['arrivals', stopId, lineIds, direction, count],
+    queryKey: ['arrivals', stopId, lineIds, direction, count, cityId],
     queryFn: async () => {
       if (!stopId) throw new Error('Stop ID is required');
 
       const searchParams = new URLSearchParams();
+      searchParams.set('city', cityId);
       if (lineIds?.length) {
         searchParams.set('lineIds', lineIds.join(','));
       }
@@ -79,7 +86,7 @@ export function useArrivals(stopId: string | null, params: UseArrivalsParams = {
       }
 
       const queryString = searchParams.toString();
-      const url = `/api/tfl/arrivals/${encodeURIComponent(stopId)}${
+      const url = `/api/transit/arrivals/${encodeURIComponent(stopId)}${
         queryString ? `?${queryString}` : ''
       }`;
 
@@ -130,11 +137,11 @@ export function useArrivals(stopId: string | null, params: UseArrivalsParams = {
   const refresh = useCallback(() => {
     if (stopId) {
       queryClient.invalidateQueries({
-        queryKey: ['arrivals', stopId, lineIds, direction, count],
+        queryKey: ['arrivals', stopId, lineIds, direction, count, cityId],
       });
       setSecondsUntilRefresh(Math.floor(refreshInterval / 1000));
     }
-  }, [queryClient, stopId, lineIds, direction, count, refreshInterval]);
+  }, [queryClient, stopId, lineIds, direction, count, refreshInterval, cityId]);
 
   // Pause/resume auto-refresh
   const [isPaused, setIsPaused] = useState(false);

@@ -18,8 +18,8 @@ const sizeClasses = {
 };
 
 /**
- * TfL-style roundel badge for stop letters.
- * Displays a red circle with white letter in the center.
+ * Roundel badge for stop letters.
+ * Displays a circle with white letter in the center, using city-brand color.
  */
 export function StopLetterBadge({
   letter,
@@ -32,7 +32,7 @@ export function StopLetterBadge({
   return (
     <div
       className={cn(
-        "rounded-full bg-tfl-red flex items-center justify-center text-white font-bold shadow-sm flex-shrink-0",
+        "rounded-full bg-city-brand flex items-center justify-center text-city-brand-foreground font-bold shadow-sm flex-shrink-0",
         sizeClasses[size],
         className
       )}

@@ -5,6 +5,7 @@ import { ArrivalItem, ArrivalItemSkeleton } from "./arrival-item";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, AlertCircle, Clock } from "lucide-react";
 import type { Arrival } from "@/types/tfl";
+import { useCity } from "@/context/city-context";
 
 interface ArrivalsListProps {
   /** List of arrivals */
@@ -39,6 +40,9 @@ export function ArrivalsList({
   onRetry,
   className,
 }: ArrivalsListProps) {
+  const { cityId } = useCity();
+  const isOutsideLondon = cityId === 'outside-london';
+
   // Show loading skeletons
   if (isLoading && arrivals.length === 0) {
     return (
@@ -96,16 +100,19 @@ export function ArrivalsList({
           lastUpdated={lastUpdated}
           refreshInterval={refreshInterval}
           onManualRefresh={onRetry}
+          isOutsideLondon={isOutsideLondon}
         />
         <div className="flex flex-col items-center justify-center py-10 sm:py-12 text-center animate-in fade-in duration-300">
           <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-muted flex items-center justify-center mb-4">
             <Clock className="w-7 h-7 sm:w-8 sm:h-8 text-muted-foreground" />
           </div>
           <p className="text-base sm:text-lg font-medium text-foreground">
-            No arrivals predicted
+            No buses nearby
           </p>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xs">
-            Check back later for live departure times
+            {isOutsideLondon
+              ? "No buses detected heading to this stop. Check back shortly."
+              : "Check back later for live departure times"}
           </p>
         </div>
       </div>
@@ -134,7 +141,9 @@ export function ArrivalsList({
       
       {/* Helpful hint for when arrivals are shown */}
       <p className="text-xs text-muted-foreground text-center pt-2">
-        Live data updates automatically every {refreshInterval} seconds
+        {isOutsideLondon
+          ? `Estimated arrivals based on nearby bus positions. Updates every ${refreshInterval}s`
+          : `Live data updates automatically every ${refreshInterval} seconds`}
       </p>
     </div>
   );
@@ -145,6 +154,7 @@ interface ArrivalsListHeaderProps {
   lastUpdated?: Date;
   refreshInterval?: number;
   onManualRefresh?: () => void;
+  isOutsideLondon?: boolean;
 }
 
 function ArrivalsListHeader({
@@ -152,12 +162,13 @@ function ArrivalsListHeader({
   lastUpdated,
   refreshInterval = 15,
   onManualRefresh,
+  isOutsideLondon = false,
 }: ArrivalsListHeaderProps) {
   return (
     <div className="flex items-center justify-between py-2">
       <div className="flex items-center gap-2">
         <h2 className="font-semibold text-base sm:text-lg text-foreground">
-          Live Arrivals
+          {isOutsideLondon ? "Nearby Buses" : "Live Arrivals"}
         </h2>
         {/* Live indicator dot */}
         <span className="relative flex h-2 w-2">
@@ -165,7 +176,7 @@ function ArrivalsListHeader({
           <span className="relative inline-flex rounded-full h-2 w-2 bg-tfl-green"></span>
         </span>
       </div>
-      
+
       <button
         onClick={onManualRefresh}
         disabled={isRefreshing}

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { ErrorBoundary } from './error-boundary';
 import { NetworkStatus } from './network-status';
+import { CityProvider } from '@/context/city-context';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -35,10 +36,12 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        {children}
-        <NetworkStatus />
-      </ErrorBoundary>
+      <CityProvider>
+        <ErrorBoundary>
+          {children}
+          <NetworkStatus />
+        </ErrorBoundary>
+      </CityProvider>
     </QueryClientProvider>
   );
 }

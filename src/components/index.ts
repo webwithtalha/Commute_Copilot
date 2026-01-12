@@ -8,6 +8,7 @@ export { StopCard, StopCardSkeleton } from "./stop-card";
 export { SearchInput } from "./search-input";
 export { Header } from "./header";
 export { Footer } from "./footer";
+export { CitySelector } from "./city-selector";
 
 // Error and loading states
 export { ErrorState } from "./error-state";
