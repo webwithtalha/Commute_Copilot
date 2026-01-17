@@ -343,6 +343,12 @@ export interface GetNearbyStopsOptions {
   modes?: string[];
 }
 
+/** TfL nearby stops response structure */
+interface TflStopPointsResponse {
+  stopPoints: TflStopPoint[];
+  centrePoint?: [number, number];
+}
+
 /**
  * Get stops near a location
  * @param options Options for fetching nearby stops
@@ -359,7 +365,7 @@ export async function getNearbyStops(
     modes = ['bus']
   } = options;
 
-  return tflFetch<TflStopPoint[]>(
+  const result = await tflFetch<TflStopPointsResponse>(
     '/StopPoint',
     {
       lat,
@@ -370,6 +376,17 @@ export async function getNearbyStops(
     },
     { revalidate: 60 } // Cache for 1 minute
   );
+
+  if (!result.success) {
+    return result;
+  }
+
+  // TfL API returns { stopPoints: [...] } not a direct array
+  return {
+    success: true,
+    data: result.data.stopPoints || [],
+    timestamp: result.timestamp,
+  };
 }
 
 // ============================================================================

@@ -198,6 +198,46 @@ export function getProviderForCity(cityId: string): TransitProviderType | undefi
 }
 
 // ============================================================================
+// Location Detection
+// ============================================================================
+
+/**
+ * Greater London bounding box (approximate)
+ * Used for auto-detecting if a location is in London
+ */
+const LONDON_BOUNDS = {
+  north: 51.69,
+  south: 51.28,
+  east: 0.33,
+  west: -0.51,
+};
+
+/**
+ * Check if coordinates are within Greater London
+ * @param lat Latitude
+ * @param lon Longitude
+ * @returns True if coordinates are in London
+ */
+export function isInLondon(lat: number, lon: number): boolean {
+  return (
+    lat >= LONDON_BOUNDS.south &&
+    lat <= LONDON_BOUNDS.north &&
+    lon >= LONDON_BOUNDS.west &&
+    lon <= LONDON_BOUNDS.east
+  );
+}
+
+/**
+ * Get the appropriate city ID based on coordinates
+ * @param lat Latitude
+ * @param lon Longitude
+ * @returns City ID ('london' or 'outside-london')
+ */
+export function getCityIdForLocation(lat: number, lon: number): string {
+  return isInLondon(lat, lon) ? 'london' : 'outside-london';
+}
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 

@@ -208,6 +208,7 @@ export async function getArrivalsInCity(
 
 /**
  * Get nearby stops in a specific city
+ * Uses smart fallback: tries primary provider first, falls back to secondary if needed
  * @param cityId City identifier
  * @param options Nearby stops options
  * @returns Array of nearby stops
@@ -216,8 +217,45 @@ export async function getNearbyStopsInCity(
   cityId: string,
   options: GetNearbyStopsOptions
 ): Promise<ApiResponse<Stop[]>> {
-  const provider = getProviderByCityId(cityId);
-  return provider.getNearbyStops(options);
+  const city = getCityOrDefault(cityId);
+  const primaryProvider = getProviderForCity(city);
+  const fallbackProvider = isBodsCityConfig(city) ? getTflProvider() : getBodsProvider();
+
+  let primaryResult: ApiResponse<Stop[]>;
+
+  // Try primary provider first
+  try {
+    primaryResult = await primaryProvider.getNearbyStops(options);
+
+    // If successful and has results, return them
+    if (primaryResult.success && primaryResult.data && primaryResult.data.length > 0) {
+      return primaryResult;
+    }
+  } catch (error) {
+    console.log(`[Providers] Primary provider (${primaryProvider.providerId}) failed:`, error);
+    primaryResult = {
+      success: false,
+      error: `Primary provider failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
+  }
+
+  // Fallback: if primary failed or returned no results, try the other provider
+  // This helps with edge cases like outer London (TfL doesn't cover it, but BODS does)
+  console.log(`[Providers] Primary provider (${primaryProvider.providerId}) returned no results, trying fallback (${fallbackProvider.providerId})`);
+
+  try {
+    const fallbackResult = await fallbackProvider.getNearbyStops(options);
+
+    // If fallback succeeded, return its results
+    if (fallbackResult.success && fallbackResult.data && fallbackResult.data.length > 0) {
+      return fallbackResult;
+    }
+  } catch (error) {
+    console.log(`[Providers] Fallback provider (${fallbackProvider.providerId}) also failed:`, error);
+  }
+
+  // If both failed, return the primary result (which has the error)
+  return primaryResult;
 }
 
 // ============================================================================

@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { useTheme } from "next-themes";
 import { useMapsStore, type MapStyle } from "@/store";
 import { useCity } from "@/context";
+import { getCityIdForLocation } from "@/config/cities";
 import { MapControls } from "./map-controls";
 import { MapsPanel } from "./maps-panel";
 import type { Stop } from "@/types/tfl";
@@ -31,7 +32,7 @@ const MAP_STYLES: Record<MapStyle, { light: string; dark: string }> = {
 
 export function MapView() {
   const { theme, resolvedTheme } = useTheme();
-  const { city } = useCity();
+  const { city, setCity } = useCity();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -144,15 +145,24 @@ export function MapView() {
     circleLayerAddedRef.current = false;
   }, [getStyleUrl, mapReady]);
 
-  // Fetch nearby stops
+  // Fetch nearby stops with auto-detection of city
   const fetchNearbyStops = useCallback(async (lat: number, lon: number) => {
     setIsLoadingStops(true);
+
+    // Auto-detect city based on coordinates
+    const detectedCityId = getCityIdForLocation(lat, lon);
+
+    // Update city context if different
+    if (detectedCityId !== city.id) {
+      setCity(detectedCityId);
+    }
+
     try {
       const params = new URLSearchParams({
         lat: lat.toString(),
         lon: lon.toString(),
         radius: SEARCH_RADIUS.toString(),
-        city: city.id,
+        city: detectedCityId, // Use detected city, not current context
       });
 
       const response = await fetch(`/api/transit/stops/nearby?${params}`);
@@ -348,6 +358,10 @@ export function MapView() {
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
+    // Use city brand color for markers
+    const markerColor = city.brandColor || "#22c55e";
+    const selectedColor = "#3b82f6"; // Keep blue for selected state for visibility
+
     // Add markers for each stop
     nearbyStops.forEach((stop) => {
       if (!stop.lat || !stop.lon) return;
@@ -362,7 +376,7 @@ export function MapView() {
         <div style="
           width: ${markerSize}px;
           height: ${markerSize}px;
-          background: ${isSelected ? "#3b82f6" : "#22c55e"};
+          background: ${isSelected ? selectedColor : markerColor};
           border: 2px solid white;
           border-radius: 50%;
           display: flex;
@@ -387,7 +401,7 @@ export function MapView() {
 
       markersRef.current.push(marker);
     });
-  }, [mapLibre, mapReady, nearbyStops, selectedStopId, setSelectedStopId]);
+  }, [mapLibre, mapReady, nearbyStops, selectedStopId, setSelectedStopId, city.brandColor]);
 
   // Map control handlers
   const handleZoomIn = () => {

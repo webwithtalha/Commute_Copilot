@@ -4,7 +4,7 @@ import { MapPin, Star, Clock, ChevronRight, Bus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useMapsStore, formatDistance, getDistanceFromUser } from "@/store";
-import { useFavorites } from "@/context";
+import { useFavorites, useCity } from "@/context";
 import { useArrivals } from "@/hooks";
 import { cn } from "@/lib/utils";
 import type { Stop } from "@/types/tfl";
@@ -28,6 +28,7 @@ function formatTime(seconds: number): string {
 function CompactCard({ stop, isSelected, onClick }: StopCardProps) {
   const { userLocation } = useMapsStore();
   const { isFavorite } = useFavorites();
+  const { city } = useCity();
   const distance = getDistanceFromUser(stop, userLocation);
   const favorite = isFavorite(stop.naptanId);
 
@@ -38,16 +39,17 @@ function CompactCard({ stop, isSelected, onClick }: StopCardProps) {
         "w-full text-left p-2.5 rounded-lg border transition-all",
         "hover:bg-accent active:scale-[0.98]",
         isSelected
-          ? "bg-primary/10 border-primary"
+          ? "border-[var(--city-brand)]"
           : "bg-card border-border"
       )}
+      style={isSelected ? { backgroundColor: `${city.brandColor}15` } : undefined}
     >
       <div className="flex items-center gap-2.5">
         {/* Bus icon */}
-        <div className={cn(
-          "w-9 h-9 flex items-center justify-center flex-shrink-0 rounded-full",
-          isSelected ? "bg-primary text-primary-foreground" : "bg-primary/90 text-primary-foreground"
-        )}>
+        <div
+          className="w-9 h-9 flex items-center justify-center flex-shrink-0 rounded-full text-white"
+          style={{ backgroundColor: city.brandColor }}
+        >
           <Bus className="w-4 h-4" />
         </div>
 
@@ -84,6 +86,7 @@ function CompactCard({ stop, isSelected, onClick }: StopCardProps) {
 function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
   const { userLocation } = useMapsStore();
   const { isFavorite } = useFavorites();
+  const { city } = useCity();
   const distance = getDistanceFromUser(stop, userLocation);
   const favorite = isFavorite(stop.naptanId);
 
@@ -94,16 +97,17 @@ function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
         "w-full text-left p-3 rounded-lg border transition-all",
         "hover:bg-accent hover:shadow-md",
         isSelected
-          ? "bg-accent border-primary shadow-md"
+          ? "bg-accent shadow-md"
           : "bg-card border-border"
       )}
+      style={isSelected ? { borderColor: city.brandColor } : undefined}
     >
       <div className="flex items-center gap-3">
         {/* Stop indicator */}
-        <div className={cn(
-          "w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-full",
-          "bg-primary text-primary-foreground"
-        )}>
+        <div
+          className="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-full text-white"
+          style={{ backgroundColor: city.brandColor }}
+        >
           <Bus className="w-5 h-5" />
         </div>
 
@@ -140,6 +144,7 @@ function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
 function ExpandedCard({ stop, onClick, onClose }: StopCardProps) {
   const { userLocation } = useMapsStore();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const { city } = useCity();
   const { arrivals, isLoading } = useArrivals(stop.naptanId, {
     refreshInterval: 30000,
     enabled: true,
@@ -158,12 +163,15 @@ function ExpandedCard({ stop, onClick, onClose }: StopCardProps) {
   };
 
   return (
-    <div className="bg-card">
+    <div className="bg-card" style={{ borderColor: city.brandColor }}>
       {/* Header */}
       <div className="p-3 sm:p-4 border-b">
         <div className="flex items-start gap-3">
           {/* Stop indicator badge */}
-          <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0 bg-primary text-primary-foreground rounded-full">
+          <div
+            className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0 rounded-full text-white"
+            style={{ backgroundColor: city.brandColor }}
+          >
             <Bus className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
 
@@ -250,7 +258,10 @@ function ExpandedCard({ stop, onClick, onClose }: StopCardProps) {
                   <Badge className="text-xs font-bold flex-shrink-0">{arrival.lineName}</Badge>
                   <span className="text-xs sm:text-sm truncate">{arrival.destination}</span>
                 </div>
-                <span className="font-mono font-bold text-primary text-xs sm:text-sm flex-shrink-0 ml-2">
+                <span
+                  className="font-mono font-bold text-xs sm:text-sm flex-shrink-0 ml-2"
+                  style={{ color: city.brandColor }}
+                >
                   {formatTime(arrival.timeToStation)}
                 </span>
               </div>
@@ -263,7 +274,11 @@ function ExpandedCard({ stop, onClick, onClose }: StopCardProps) {
 
       {/* Action button */}
       <div className="p-3 sm:p-4 pt-0">
-        <Button className="w-full h-9 sm:h-10 text-sm" onClick={onClick}>
+        <Button
+          className="w-full h-9 sm:h-10 text-sm"
+          style={{ backgroundColor: city.brandColor, color: 'white' }}
+          onClick={onClick}
+        >
           View full details
         </Button>
       </div>

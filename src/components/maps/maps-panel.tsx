@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMapsStore, type SortBy } from "@/store";
+import { useCity } from "@/context";
 import { StopCard } from "./stop-card";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,7 @@ interface MapsPanelProps {
 
 export function MapsPanel({ onLocate, onSearchLocation }: MapsPanelProps) {
   const router = useRouter();
+  const { city } = useCity();
   const {
     isPanelVisible,
     setIsPanelVisible,
@@ -291,13 +293,14 @@ export function MapsPanel({ onLocate, onSearchLocation }: MapsPanelProps) {
             </div>
             <Button
               size="sm"
-              variant={userLocation && !searchedLocation ? "default" : "secondary"}
+              variant="default"
               onClick={() => {
                 clearSearchedLocation();
                 onLocate?.();
               }}
               disabled={isLocating}
               className="h-8"
+              style={{ backgroundColor: city.brandColor, color: 'white' }}
             >
               {isLocating ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -619,13 +622,14 @@ export function MapsPanel({ onLocate, onSearchLocation }: MapsPanelProps) {
             </DropdownMenu>
 
             <Button
-              variant={userLocation && !searchedLocation ? "default" : "secondary"}
+              variant="default"
               size="sm"
               onClick={() => {
                 clearSearchedLocation();
                 onLocate?.();
               }}
               disabled={isLocating}
+              style={{ backgroundColor: city.brandColor, color: 'white' }}
             >
               {isLocating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -658,7 +662,11 @@ export function MapsPanel({ onLocate, onSearchLocation }: MapsPanelProps) {
                 <p className="text-sm text-muted-foreground mb-4">
                   Search for a location or enable GPS to discover bus stops
                 </p>
-                <Button onClick={onLocate} disabled={isLocating}>
+                <Button
+                  onClick={onLocate}
+                  disabled={isLocating}
+                  style={{ backgroundColor: city.brandColor, color: 'white' }}
+                >
                   <Navigation className="w-4 h-4 mr-2" />
                   Use my location
                 </Button>
