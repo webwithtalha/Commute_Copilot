@@ -311,14 +311,13 @@ export class BodsProvider implements TransitProvider {
    * Get real-time arrivals for outside London stops
    *
    * Primary: Uses BODS SIRI-VM API for actual arrival predictions with destinations.
-   * Fallback: Uses GTFS-RT vehicle positions to estimate arrivals if SIRI-VM fails.
    */
   async getArrivals(options: GetArrivalsOptions): Promise<ApiResponse<Arrival[]>> {
     const { stopId } = options;
 
     console.log(`[BODS] Arrivals requested for stop: ${stopId}`);
 
-    // First, get the stop details to get coordinates (needed for both SIRI-VM and GTFS-RT)
+    // First, get the stop details to get coordinates and alternative IDs
     const stopResult = await this.getStopDetails({ stopId });
 
     if (!stopResult.success || !stopResult.data) {
@@ -342,29 +341,43 @@ export class BodsProvider implements TransitProvider {
       };
     }
 
-    // Try SIRI-VM for actual arrival predictions (preferred)
-    const siriVmResult = await this.getSiriVmArrivals(stopId, stop.lat, stop.lon);
+    // Collect all possible stop ID formats for matching
+    // BODS may use different formats: NaPTAN code (sufajwgw), ATCO code (390GSUFAJWGW), etc.
+    const stopIds: string[] = [stopId];
+    if (stop.stopCode && stop.stopCode !== stopId) {
+      stopIds.push(stop.stopCode); // e.g., "sufajwgw"
+    }
+    if (stop.naptanId && stop.naptanId !== stopId) {
+      stopIds.push(stop.naptanId);
+    }
+
+    console.log(`[BODS] Will try matching against stop IDs: ${stopIds.join(', ')}`);
+
+    // Use SIRI-VM for actual arrival predictions
+    // This is the only reliable method as it verifies which stops a bus will visit
+    const siriVmResult = await this.getSiriVmArrivals(stopIds, stop.lat, stop.lon);
 
     if (siriVmResult.success && siriVmResult.data && siriVmResult.data.length > 0) {
       console.log(`[BODS] Got ${siriVmResult.data.length} arrivals from SIRI-VM`);
       return siriVmResult;
     }
 
-    // Log why we're falling back
+    // Log why we have no arrivals
     if (!siriVmResult.success) {
-      console.warn(`[BODS] SIRI-VM failed: ${siriVmResult.error}, falling back to GTFS-RT`);
+      console.warn(`[BODS] SIRI-VM failed: ${siriVmResult.error}`);
     } else {
-      console.log(`[BODS] SIRI-VM returned no arrivals, trying GTFS-RT fallback`);
+      console.log(`[BODS] SIRI-VM returned no arrivals for stop ${stopId}`);
+      console.log(`[BODS] This may mean no buses are currently heading to this stop`);
     }
 
-    // Fallback: Use GTFS-RT vehicle positions to estimate arrivals
-    const gtfsResult = await gtfsrtClient.getArrivalsForStop(stop);
+    // Note: We don't use GTFS-RT fallback because it cannot verify which stops a bus serves
+    // It would show incorrect arrivals (any bus heading in the general direction)
 
-    if (gtfsResult.success && gtfsResult.data && gtfsResult.data.length > 0) {
-      console.log(`[BODS] Got ${gtfsResult.data.length} estimated arrivals from GTFS-RT`);
-    }
-
-    return gtfsResult;
+    return {
+      success: true,
+      data: [],
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
@@ -406,9 +419,13 @@ export class BodsProvider implements TransitProvider {
    * Get real-time arrivals from BODS SIRI-VM feed
    * Uses bounding box around stop coordinates to fetch nearby vehicles,
    * then filters for vehicles heading to the target stop.
+   *
+   * @param stopIds Array of possible stop ID formats to match against
+   * @param stopLat Stop latitude
+   * @param stopLon Stop longitude
    */
   private async getSiriVmArrivals(
-    stopId: string,
+    stopIds: string[],
     stopLat: number,
     stopLon: number
   ): Promise<ApiResponse<Arrival[]>> {
@@ -428,9 +445,10 @@ export class BodsProvider implements TransitProvider {
       const url = new URL(`${BODS_API_BASE_URL}/datafeed/`);
       url.searchParams.set('api_key', apiKey);
 
-      // Create a bounding box around the stop (approx 5km radius)
-      // 0.05 degrees ≈ 5.5km at UK latitudes
-      const boxSize = 0.05;
+      // Create a bounding box around the stop (approx 10km radius)
+      // 0.1 degrees ≈ 11km at UK latitudes - larger box catches more buses
+      // especially in rural areas where services are more spread out
+      const boxSize = 0.1;
       const boundingBox = [
         (stopLon - boxSize).toFixed(4),  // min longitude (west)
         (stopLat - boxSize).toFixed(4),  // min latitude (south)
@@ -440,7 +458,7 @@ export class BodsProvider implements TransitProvider {
 
       url.searchParams.set('boundingBox', boundingBox);
 
-      console.log(`[BODS/SIRI-VM] Fetching arrivals for stop: ${stopId} (bbox: ${boundingBox})`);
+      console.log(`[BODS/SIRI-VM] Fetching arrivals for stops: ${stopIds.join(', ')} (bbox: ${boundingBox})`);
 
       const response = await fetch(url.toString(), {
         signal: AbortSignal.timeout(15000), // 15 second timeout
@@ -466,11 +484,16 @@ export class BodsProvider implements TransitProvider {
         };
       }
 
-      // Parse XML response and estimate arrivals from vehicle positions
+      // Parse XML response and extract arrivals for this specific stop
       const xmlText = await response.text();
-      const arrivals = this.parseSiriVmResponse(xmlText, stopId, stopLat, stopLon);
 
-      console.log(`[BODS/SIRI-VM] Parsed ${arrivals.length} arrivals from response`);
+      // Log raw vehicle count for debugging
+      const vehicleCount = (xmlText.match(/<VehicleActivity>/g) || []).length;
+      console.log(`[BODS/SIRI-VM] Response contains ${vehicleCount} vehicles in area`);
+
+      const arrivals = this.parseSiriVmResponse(xmlText, stopIds, stopLat, stopLon);
+
+      console.log(`[BODS/SIRI-VM] Found ${arrivals.length} buses actually serving stop(s): ${stopIds.join(', ')}`);
 
       return {
         success: true,
@@ -488,20 +511,33 @@ export class BodsProvider implements TransitProvider {
   }
 
   /**
-   * Parse SIRI-VM XML response and estimate arrivals based on vehicle positions
+   * Parse SIRI-VM XML response and extract arrivals for the target stop
    *
-   * Note: BODS SIRI-VM doesn't include MonitoredCall/OnwardCalls with arrival times.
-   * We estimate arrivals using distance from vehicle to stop and average bus speed.
+   * IMPORTANT: Only shows buses that will actually visit the target stop.
+   * Checks MonitoredCall and OnwardCalls to verify the stop is on the route.
+   *
+   * @param xml SIRI-VM XML response
+   * @param targetStopIds Array of possible stop ID formats to match against
+   * @param stopLat Stop latitude for distance estimation fallback
+   * @param stopLon Stop longitude for distance estimation fallback
    */
   private parseSiriVmResponse(
     xml: string,
-    targetStopId: string,
+    targetStopIds: string[],
     stopLat: number,
     stopLon: number
   ): Arrival[] {
     const arrivals: Arrival[] = [];
-    const AVERAGE_BUS_SPEED_KMH = 20;
-    const MAX_DISTANCE_KM = 5;
+    const MAX_DATA_AGE_SECONDS = 300; // 5 minutes - reject stale vehicle data
+    const now = new Date();
+
+    // Normalize all target stop IDs for matching (remove spaces, uppercase)
+    const normalizedTargetIds = targetStopIds.map(id => id.replace(/\s/g, '').toUpperCase());
+
+    // Track stats for debugging
+    let vehiclesWithMonitoredCall = 0;
+    let vehiclesWithOnwardCalls = 0;
+    let stopsChecked = new Set<string>();
 
     try {
       // Extract VehicleActivity elements using regex (lightweight XML parsing)
@@ -511,23 +547,30 @@ export class BodsProvider implements TransitProvider {
       while ((match = vehicleActivityRegex.exec(xml)) !== null) {
         const vehicleActivity = match[1];
 
-        // Extract vehicle position
-        const vehicleLat = parseFloat(this.extractXmlValue(vehicleActivity, 'Latitude') || '0');
-        const vehicleLon = parseFloat(this.extractXmlValue(vehicleActivity, 'Longitude') || '0');
+        // Check data freshness - RecordedAtTime indicates when the vehicle last reported
+        const recordedAtTimeStr = this.extractXmlValue(vehicleActivity, 'RecordedAtTime');
+        if (recordedAtTimeStr) {
+          const recordedAt = new Date(recordedAtTimeStr);
+          const dataAgeSeconds = (now.getTime() - recordedAt.getTime()) / 1000;
 
-        if (!vehicleLat || !vehicleLon) continue;
+          // Skip stale data (vehicle hasn't reported recently - likely not in service)
+          if (dataAgeSeconds > MAX_DATA_AGE_SECONDS) {
+            continue;
+          }
+        }
 
-        // Calculate distance to stop
-        const distanceKm = this.haversineDistance(vehicleLat, vehicleLon, stopLat, stopLon);
+        // Track stats for debugging
+        if (vehicleActivity.includes('<MonitoredCall>')) vehiclesWithMonitoredCall++;
+        if (vehicleActivity.includes('<OnwardCalls>')) vehiclesWithOnwardCalls++;
 
-        // Skip if too far
-        if (distanceKm > MAX_DISTANCE_KM) continue;
+        // Check if this bus will visit our target stop
+        // Look in MonitoredCall (next stop) and OnwardCalls (subsequent stops)
+        const stopMatch = this.findStopInJourney(vehicleActivity, normalizedTargetIds, stopsChecked);
 
-        // Check if vehicle is heading towards stop (using bearing)
-        const vehicleBearing = parseFloat(this.extractXmlValue(vehicleActivity, 'Bearing') || '0');
-        const bearingToStop = this.calculateBearing(vehicleLat, vehicleLon, stopLat, stopLon);
-
-        if (!this.isHeadingTowards(vehicleBearing, bearingToStop)) continue;
+        if (!stopMatch) {
+          // Bus doesn't serve this stop - skip it
+          continue;
+        }
 
         // Extract journey details
         const lineName = this.extractXmlValue(vehicleActivity, 'PublishedLineName') ||
@@ -535,23 +578,46 @@ export class BodsProvider implements TransitProvider {
         const destinationName = this.extractXmlValue(vehicleActivity, 'DestinationName') || 'Unknown destination';
         const vehicleRef = this.extractXmlValue(vehicleActivity, 'VehicleRef') || `v-${Date.now()}`;
 
-        // Estimate arrival time based on distance and average speed
-        const timeToStationSeconds = Math.round((distanceKm / AVERAGE_BUS_SPEED_KMH) * 3600);
+        // Calculate arrival time
+        let timeToStationSeconds: number;
+        let expectedArrival: Date;
+        let currentLocation: string;
 
-        // Skip if estimated arrival is too long (more than 30 mins)
-        if (timeToStationSeconds > 1800) continue;
+        if (stopMatch.expectedArrivalTime) {
+          // Use the actual expected arrival time from the feed
+          expectedArrival = new Date(stopMatch.expectedArrivalTime);
+          timeToStationSeconds = Math.max(0, Math.round((expectedArrival.getTime() - now.getTime()) / 1000));
+          currentLocation = stopMatch.stopsAway ? `${stopMatch.stopsAway} stops away` : 'On route';
+        } else if (stopMatch.aimedArrivalTime) {
+          // Fall back to scheduled time
+          expectedArrival = new Date(stopMatch.aimedArrivalTime);
+          timeToStationSeconds = Math.max(0, Math.round((expectedArrival.getTime() - now.getTime()) / 1000));
+          currentLocation = 'Scheduled';
+        } else {
+          // No arrival time available - estimate from vehicle position
+          const vehicleLat = parseFloat(this.extractXmlValue(vehicleActivity, 'Latitude') || '0');
+          const vehicleLon = parseFloat(this.extractXmlValue(vehicleActivity, 'Longitude') || '0');
 
-        const now = new Date();
-        const expectedArrival = new Date(now.getTime() + timeToStationSeconds * 1000);
+          if (!vehicleLat || !vehicleLon) continue;
+
+          const distanceKm = this.haversineDistance(vehicleLat, vehicleLon, stopLat, stopLon);
+          const AVERAGE_BUS_SPEED_KMH = 15; // Conservative estimate for urban areas
+          timeToStationSeconds = Math.round((distanceKm / AVERAGE_BUS_SPEED_KMH) * 3600);
+          expectedArrival = new Date(now.getTime() + timeToStationSeconds * 1000);
+          currentLocation = `~${distanceKm.toFixed(1)}km away`;
+        }
+
+        // Skip if arrival is in the past or too far in the future (>60 mins)
+        if (timeToStationSeconds < 0 || timeToStationSeconds > 3600) continue;
 
         arrivals.push({
-          id: `${vehicleRef}-${stopLat.toFixed(4)}`,
+          id: `${vehicleRef}-${targetStopIds[0]}`,
           lineName,
           destination: destinationName,
           timeToStation: timeToStationSeconds,
           expectedArrival,
           vehicleId: vehicleRef,
-          currentLocation: `${distanceKm.toFixed(1)}km away`,
+          currentLocation,
           towards: destinationName,
           mode: 'bus',
         });
@@ -560,9 +626,118 @@ export class BodsProvider implements TransitProvider {
       console.error('[BODS/SIRI-VM] XML parsing error:', error);
     }
 
+    // Log debug info
+    console.log(`[BODS/SIRI-VM] Debug: ${vehiclesWithMonitoredCall} vehicles have MonitoredCall, ${vehiclesWithOnwardCalls} have OnwardCalls`);
+    if (stopsChecked.size > 0 && arrivals.length === 0) {
+      // Log some sample stop IDs to help debug matching issues
+      const sampleStops = Array.from(stopsChecked).slice(0, 10);
+      console.log(`[BODS/SIRI-VM] Sample stop IDs in feed: ${sampleStops.join(', ')}`);
+      console.log(`[BODS/SIRI-VM] Looking for any of: ${normalizedTargetIds.join(', ')}`);
+    }
+
     // Remove duplicates and sort by arrival time
     const uniqueArrivals = this.deduplicateArrivals(arrivals);
     return uniqueArrivals.sort((a, b) => a.timeToStation - b.timeToStation).slice(0, 10);
+  }
+
+  /**
+   * Find if the target stop appears in the vehicle's journey
+   * Checks MonitoredCall and OnwardCalls
+   *
+   * @param vehicleActivity XML content for the vehicle
+   * @param normalizedTargetIds Array of normalized stop IDs to match against
+   * @param stopsChecked Optional set to collect all stop IDs seen (for debugging)
+   */
+  private findStopInJourney(
+    vehicleActivity: string,
+    normalizedTargetIds: string[],
+    stopsChecked?: Set<string>
+  ): { expectedArrivalTime?: string; aimedArrivalTime?: string; stopsAway?: number } | null {
+    // Check MonitoredCall (the next stop)
+    const monitoredCallMatch = vehicleActivity.match(/<MonitoredCall>([\s\S]*?)<\/MonitoredCall>/);
+    if (monitoredCallMatch) {
+      const monitoredCall = monitoredCallMatch[1];
+      const stopPointRef = this.extractXmlValue(monitoredCall, 'StopPointRef');
+
+      if (stopPointRef) {
+        stopsChecked?.add(stopPointRef);
+        if (this.isMatchingStopId(stopPointRef, normalizedTargetIds)) {
+          return {
+            expectedArrivalTime: this.extractXmlValue(monitoredCall, 'ExpectedArrivalTime') || undefined,
+            aimedArrivalTime: this.extractXmlValue(monitoredCall, 'AimedArrivalTime') || undefined,
+            stopsAway: 0, // Next stop
+          };
+        }
+      }
+    }
+
+    // Check OnwardCalls (subsequent stops)
+    const onwardCallsMatch = vehicleActivity.match(/<OnwardCalls>([\s\S]*?)<\/OnwardCalls>/);
+    if (onwardCallsMatch) {
+      const onwardCalls = onwardCallsMatch[1];
+      const onwardCallRegex = /<OnwardCall>([\s\S]*?)<\/OnwardCall>/g;
+      let callMatch;
+      let stopIndex = 1; // Start at 1 since MonitoredCall is stop 0
+
+      while ((callMatch = onwardCallRegex.exec(onwardCalls)) !== null) {
+        const onwardCall = callMatch[1];
+        const stopPointRef = this.extractXmlValue(onwardCall, 'StopPointRef');
+
+        if (stopPointRef) {
+          stopsChecked?.add(stopPointRef);
+          if (this.isMatchingStopId(stopPointRef, normalizedTargetIds)) {
+            return {
+              expectedArrivalTime: this.extractXmlValue(onwardCall, 'ExpectedArrivalTime') || undefined,
+              aimedArrivalTime: this.extractXmlValue(onwardCall, 'AimedArrivalTime') || undefined,
+              stopsAway: stopIndex,
+            };
+          }
+        }
+        stopIndex++;
+      }
+    }
+
+    // Stop not found in this vehicle's journey
+    return null;
+  }
+
+  /**
+   * Check if a stop reference matches any of the target stop IDs
+   * Handles different ATCO code formats and variations
+   *
+   * @param stopRef The stop reference from the SIRI-VM feed
+   * @param normalizedTargetIds Array of normalized target stop IDs
+   */
+  private isMatchingStopId(stopRef: string, normalizedTargetIds: string[]): boolean {
+    const normalizedRef = stopRef.replace(/\s/g, '').toUpperCase();
+
+    for (const normalizedTargetId of normalizedTargetIds) {
+      // Exact match
+      if (normalizedRef === normalizedTargetId) return true;
+
+      // Check if one contains the other (handles different prefix formats)
+      // e.g., "sufajwgw" might appear as "390Gsufajwgw" in some feeds
+      if (normalizedRef.includes(normalizedTargetId) || normalizedTargetId.includes(normalizedRef)) {
+        return true;
+      }
+
+      // Check last 8 characters (common NaPTAN short code format)
+      // e.g., "390GSUFAJWGW" should match "sufajwgw"
+      if (normalizedRef.length >= 8 && normalizedTargetId.length >= 8) {
+        if (normalizedRef.slice(-8) === normalizedTargetId.slice(-8)) {
+          return true;
+        }
+      }
+
+      // Also check if the last part of the ref matches (after any prefix)
+      // e.g., "390GSUFAJWGW" contains "SUFAJWGW" which should match "sufajwgw"
+      const shortCode = normalizedTargetId.length === 8 ? normalizedTargetId : normalizedTargetId.slice(-8);
+      if (shortCode.length >= 6 && normalizedRef.includes(shortCode)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -599,7 +774,8 @@ export class BodsProvider implements TransitProvider {
    * Check if vehicle is heading towards the stop (within 60 degree tolerance)
    */
   private isHeadingTowards(vehicleBearing: number, bearingToStop: number): boolean {
-    if (!vehicleBearing) return true; // If no bearing, assume it might be heading to stop
+    // Require valid bearing to confirm vehicle is moving towards stop
+    if (!vehicleBearing && vehicleBearing !== 0) return false;
     let diff = Math.abs(vehicleBearing - bearingToStop);
     if (diff > 180) diff = 360 - diff;
     return diff <= 60;
@@ -646,28 +822,6 @@ export class BodsProvider implements TransitProvider {
     }
     
     return null;
-  }
-
-  /**
-   * Check if a stop reference matches our target stop
-   * Handles different ATCO code formats
-   */
-  private isMatchingStop(stopRef: string | null, targetStopId: string): boolean {
-    if (!stopRef) return false;
-    
-    // Normalize both IDs for comparison
-    const normalizedRef = stopRef.replace(/\s/g, '').toUpperCase();
-    const normalizedTarget = targetStopId.replace(/\s/g, '').toUpperCase();
-    
-    // Exact match
-    if (normalizedRef === normalizedTarget) return true;
-    
-    // Check if one contains the other (handles different prefix formats)
-    if (normalizedRef.includes(normalizedTarget) || normalizedTarget.includes(normalizedRef)) {
-      return true;
-    }
-    
-    return false;
   }
 
   /**

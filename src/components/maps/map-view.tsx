@@ -343,10 +343,12 @@ export function MapView() {
       el.className = "stop-marker";
       const isSelected = stop.naptanId === selectedStopId;
 
+      const markerSize = isSelected ? 40 : 32;
+
       el.innerHTML = `
         <div style="
-          width: ${isSelected ? "40px" : "32px"};
-          height: ${isSelected ? "40px" : "32px"};
+          width: ${markerSize}px;
+          height: ${markerSize}px;
           background: ${isSelected ? "#3b82f6" : "#22c55e"};
           border: 2px solid white;
           border-radius: 50%;
@@ -358,11 +360,7 @@ export function MapView() {
           transition: all 0.2s;
           transform: ${isSelected ? "scale(1.1)" : "scale(1)"};
         ">
-          <span style="
-            color: white;
-            font-weight: bold;
-            font-size: ${isSelected ? "14px" : "12px"};
-          ">${stop.stopLetter || "🚌"}</span>
+          <span style="font-size: ${isSelected ? "18px" : "14px"};">🚌</span>
         </div>
       `;
 

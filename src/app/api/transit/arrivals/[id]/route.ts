@@ -9,8 +9,32 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getProviderByCityId } from '@/lib/providers';
-import { getCityOrDefault } from '@/config/cities';
+import { getCityOrDefault, CITIES } from '@/config/cities';
 import type { Arrival } from '@/types/tfl';
+
+/**
+ * Detect if a stop ID is a London TfL stop based on NaPTAN code format
+ * London bus stops: 490XXXXXXX (490 prefix)
+ * London tube/rail: 940XXXXXXX, 910XXXXXXX, etc.
+ * Outside London: Various formats like sufajwgw (text-based ATCO codes)
+ */
+function isLondonStop(stopId: string): boolean {
+  // London NaPTAN codes for bus are typically 490XXXXXXX
+  // Other London modes use 940, 910, 930, etc.
+  if (/^(490|940|910|930|920|950|960)\d+/i.test(stopId)) {
+    return true;
+  }
+
+  // Check if it's a numeric ID that looks like a London format
+  // London IDs are typically 9+ digits starting with specific prefixes
+  if (/^\d{9,}$/.test(stopId) && /^[4-9]/.test(stopId)) {
+    return true;
+  }
+
+  // Outside London ATCO codes are typically 8-character alphanumeric
+  // or have a region prefix like "sufajwgw" (Suffolk)
+  return false;
+}
 
 // ============================================================================
 // Types
@@ -98,11 +122,16 @@ export async function GET(
   }
 
   try {
+    // Auto-detect provider based on stop ID format
+    // This ensures we use the correct provider even if the user's city setting is wrong
+    const detectedCityId = isLondonStop(stopId) ? 'london' : 'outside-london';
+    const effectiveCityId = detectedCityId;
+
     // Get city configuration and provider
-    const city = getCityOrDefault(cityId);
-    const provider = getProviderByCityId(cityId);
-    
-    console.log(`[Transit API] Getting arrivals: ${stopId} in ${city.name} via ${provider.providerName}`);
+    const city = getCityOrDefault(effectiveCityId);
+    const provider = getProviderByCityId(effectiveCityId);
+
+    console.log(`[Transit API] Getting arrivals: ${stopId} in ${city.name} via ${provider.providerName} (detected from stop ID)`);
 
     // Fetch arrivals using the appropriate provider
     const result = await provider.getArrivals({

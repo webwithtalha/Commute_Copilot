@@ -40,11 +40,14 @@ function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
           : "bg-card border-border"
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         {/* Stop indicator */}
         <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
-          "bg-primary text-primary-foreground font-bold text-sm"
+          "h-10 flex items-center justify-center flex-shrink-0",
+          "bg-primary text-primary-foreground font-bold",
+          stop.stopLetter && stop.stopLetter.length > 2
+            ? "min-w-10 px-2 rounded-full text-xs"
+            : "w-10 rounded-full text-sm"
         )}>
           {stop.stopLetter || <Bus className="w-5 h-5" />}
         </div>
@@ -56,7 +59,7 @@ function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
             {favorite && <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 flex-shrink-0" />}
           </div>
 
-          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
             {stop.stopCode && (
               <span className="font-mono">{stop.stopCode}</span>
             )}
@@ -70,25 +73,9 @@ function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
               </>
             )}
           </div>
-
-          {/* Lines preview */}
-          {stop.lines && stop.lines.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {stop.lines.slice(0, 4).map((line) => (
-                <Badge key={line} variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {line}
-                </Badge>
-              ))}
-              {stop.lines.length > 4 && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                  +{stop.lines.length - 4}
-                </Badge>
-              )}
-            </div>
-          )}
         </div>
 
-        <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+        <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
       </div>
     </button>
   );
@@ -119,28 +106,31 @@ function ExpandedCard({ stop, onClick }: StopCardProps) {
     <div className="bg-card border border-primary rounded-lg shadow-lg overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
+          {/* Stop indicator badge */}
           <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0",
-            "bg-primary text-primary-foreground font-bold text-lg"
+            "h-12 flex items-center justify-center flex-shrink-0",
+            "bg-primary text-primary-foreground font-bold",
+            stop.stopLetter && stop.stopLetter.length > 2
+              ? "min-w-12 px-3 rounded-full text-base"
+              : "w-12 rounded-full text-lg"
           )}>
             {stop.stopLetter || <Bus className="w-6 h-6" />}
           </div>
 
+          {/* Stop info */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground">{stop.name}</h3>
-            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+            <h3 className="font-semibold text-foreground text-lg">{stop.name}</h3>
+            <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground">
               {stop.stopCode && (
                 <span className="font-mono">{stop.stopCode}</span>
               )}
+              {stop.stopCode && distance !== null && <span>•</span>}
               {distance !== null && (
-                <>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {formatDistance(distance)}
-                  </span>
-                </>
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {formatDistance(distance)}
+                </span>
               )}
             </div>
           </div>
@@ -150,7 +140,7 @@ function ExpandedCard({ stop, onClick }: StopCardProps) {
             size="icon"
             variant="ghost"
             onClick={handleFavoriteClick}
-            className="h-8 w-8"
+            className="h-8 w-8 flex-shrink-0"
           >
             <Star className={cn(
               "w-4 h-4",

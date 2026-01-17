@@ -20,7 +20,8 @@ const BODS_GTFSRT_URL = 'https://data.bus-data.dft.gov.uk/api/v1/gtfsrtdatafeed/
 const AVERAGE_BUS_SPEED_KMH = 20;
 
 // Maximum distance to search for approaching buses (in km)
-const MAX_SEARCH_RADIUS_KM = 5;
+// Larger radius helps catch buses in rural/suburban areas
+const MAX_SEARCH_RADIUS_KM = 10;
 
 // Maximum number of arrivals to return
 const MAX_ARRIVALS = 10;
@@ -141,7 +142,8 @@ function isHeadingTowardsStop(
   bearingToStop: number,
   tolerance: number = 60
 ): boolean {
-  if (vehicleBearing === undefined) return true; // If no bearing, assume it might be heading to stop
+  // Require valid bearing to confirm vehicle is moving towards stop
+  if (vehicleBearing === undefined || vehicleBearing === null) return false;
 
   let diff = Math.abs(vehicleBearing - bearingToStop);
   if (diff > 180) diff = 360 - diff;
@@ -196,47 +198,30 @@ function getApiKey(): string | null {
   return apiKey;
 }
 
-// UK bus operators that serve various regions
-// These are the National Operator Codes (NOC) used by BODS
-const UK_OPERATORS = [
-  'FECS', // First Essex/Suffolk - serves Ipswich
-  'SCCM', // Stagecoach Cambus - serves Cambridge, Peterborough
-  'ARBB', // Arriva Beds & Bucks
-  'ABLO', // Arriva London
-  'SCNH', // Stagecoach North East
-  'SCSO', // Stagecoach South
-  'SCWE', // Stagecoach West
-  'WNCT', // WN Coaches (Ipswich Buses)
-];
-
 /**
- * Get operator codes for a region based on stop location
- * This is a basic mapping - ideally we'd have a more comprehensive database
+ * Create a bounding box string for BODS API
+ * Format: minLon,minLat,maxLon,maxLat
+ * @param lat Center latitude
+ * @param lon Center longitude
+ * @param radiusKm Radius in kilometers (default ~10km)
  */
-function getOperatorsForRegion(lat: number, lon: number): string[] {
-  // Suffolk/Essex region (includes Ipswich)
-  if (lat >= 51.5 && lat <= 52.5 && lon >= 0.5 && lon <= 1.8) {
-    return ['FECS', 'WNCT']; // First Essex and Ipswich Buses
-  }
-  // Cambridge region
-  if (lat >= 52.0 && lat <= 52.5 && lon >= -0.2 && lon <= 0.5) {
-    return ['SCCM']; // Stagecoach Cambus
-  }
-  // Manchester region
-  if (lat >= 53.3 && lat <= 53.6 && lon >= -2.5 && lon <= -2.0) {
-    return ['SCMN']; // Stagecoach Manchester
-  }
-  // Birmingham region
-  if (lat >= 52.3 && lat <= 52.6 && lon >= -2.0 && lon <= -1.7) {
-    return ['DIAM', 'NXWM']; // Diamond Bus, National Express West Midlands
-  }
-  // Default: try First and Stagecoach
-  return ['FECS', 'SCCM'];
+function createBoundingBox(lat: number, lon: number, radiusKm: number = 10): string {
+  // 1 degree latitude ≈ 111km
+  // 1 degree longitude varies with latitude, ≈ 111km * cos(lat)
+  const latOffset = radiusKm / 111;
+  const lonOffset = radiusKm / (111 * Math.cos(toRad(lat)));
+
+  const minLon = (lon - lonOffset).toFixed(4);
+  const minLat = (lat - latOffset).toFixed(4);
+  const maxLon = (lon + lonOffset).toFixed(4);
+  const maxLat = (lat + latOffset).toFixed(4);
+
+  return `${minLon},${minLat},${maxLon},${maxLat}`;
 }
 
 /**
- * Fetch vehicles from BODS GTFS-RT feed using operator filter
- * Falls back to bounding box if operator filter fails
+ * Fetch vehicles from BODS GTFS-RT feed using bounding box
+ * This approach works for any UK location without needing to know specific operators
  */
 async function fetchVehiclesNearStop(
   stopLat: number,
@@ -247,63 +232,66 @@ async function fetchVehiclesNearStop(
     throw new Error('BODS API key not configured');
   }
 
-  // Get operators for this region
-  const operators = getOperatorsForRegion(stopLat, stopLon);
+  // Use bounding box to get all vehicles in the area (works for any UK location)
+  const boundingBox = createBoundingBox(stopLat, stopLon, MAX_SEARCH_RADIUS_KM);
 
-  console.log(`[GTFS-RT] Fetching vehicles from operators: ${operators.join(', ')}`);
+  console.log(`[GTFS-RT] Fetching vehicles in bounding box: ${boundingBox}`);
 
-  const allEntities: GtfsRtEntity[] = [];
+  try {
+    const url = `${BODS_GTFSRT_URL}?api_key=${apiKey}&boundingBox=${boundingBox}`;
 
-  // Try each operator
-  for (const operator of operators) {
-    try {
-      const url = `${BODS_GTFSRT_URL}?api_key=${apiKey}&operatorRef=${operator}`;
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(20000), // 20 second timeout for larger area
+    });
 
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(15000),
-      });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[GTFS-RT] BODS API error ${response.status}:`, errorText);
 
-      if (!response.ok) {
-        console.warn(`[GTFS-RT] Operator ${operator} failed: ${response.status}`);
-        continue;
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('BODS API authentication failed');
       }
-
-      const buffer = await response.arrayBuffer();
-
-      // Check if response is valid protobuf (not HTML error page)
-      const firstBytes = new Uint8Array(buffer.slice(0, 20));
-      if (firstBytes[0] === 0x3c) { // '<' character - likely HTML
-        console.warn(`[GTFS-RT] Operator ${operator} returned HTML instead of protobuf`);
-        continue;
-      }
-
-      const GtfsRealtimeBindings = await import('gtfs-realtime-bindings');
-      const feed = GtfsRealtimeBindings.default.transit_realtime.FeedMessage.decode(
-        new Uint8Array(buffer)
-      );
-
-      console.log(`[GTFS-RT] Operator ${operator}: ${feed.entity.length} vehicles`);
-      allEntities.push(...(feed.entity as GtfsRtEntity[]));
-
-      // If we found enough vehicles, stop searching
-      if (allEntities.length > 100) break;
-    } catch (error) {
-      console.warn(`[GTFS-RT] Error fetching operator ${operator}:`, error);
+      throw new Error(`BODS API error: ${response.status}`);
     }
+
+    const buffer = await response.arrayBuffer();
+
+    // Check if response is valid protobuf (not HTML error page)
+    const firstBytes = new Uint8Array(buffer.slice(0, 20));
+    if (firstBytes[0] === 0x3c) { // '<' character - likely HTML
+      console.warn('[GTFS-RT] Received HTML instead of protobuf - API may be unavailable');
+      return [];
+    }
+
+    // Check for empty response
+    if (buffer.byteLength === 0) {
+      console.log('[GTFS-RT] Empty response from BODS API');
+      return [];
+    }
+
+    const GtfsRealtimeBindings = await import('gtfs-realtime-bindings');
+    const feed = GtfsRealtimeBindings.default.transit_realtime.FeedMessage.decode(
+      new Uint8Array(buffer)
+    );
+
+    console.log(`[GTFS-RT] Received ${feed.entity.length} vehicles from BODS`);
+
+    // Filter to only vehicles with position data near the stop
+    const nearbyEntities = (feed.entity as GtfsRtEntity[]).filter(entity => {
+      const pos = entity.vehicle?.position;
+      if (!pos) return false;
+
+      const distance = haversineDistance(pos.latitude, pos.longitude, stopLat, stopLon);
+      return distance <= MAX_SEARCH_RADIUS_KM;
+    });
+
+    console.log(`[GTFS-RT] Found ${nearbyEntities.length} vehicles within ${MAX_SEARCH_RADIUS_KM}km of stop`);
+
+    return nearbyEntities;
+  } catch (error) {
+    console.error('[GTFS-RT] Error fetching vehicles:', error);
+    throw error;
   }
-
-  // Filter to only vehicles near the stop
-  const nearbyEntities = allEntities.filter(entity => {
-    const pos = entity.vehicle?.position;
-    if (!pos) return false;
-
-    const distance = haversineDistance(pos.latitude, pos.longitude, stopLat, stopLon);
-    return distance <= MAX_SEARCH_RADIUS_KM;
-  });
-
-  console.log(`[GTFS-RT] Found ${nearbyEntities.length} vehicles within ${MAX_SEARCH_RADIUS_KM}km of stop`);
-
-  return nearbyEntities;
 }
 
 /**
@@ -315,12 +303,28 @@ function estimateArrivalsFromVehicles(
 ): Arrival[] {
   const arrivals: Arrival[] = [];
   const now = new Date();
+  const MIN_DISTANCE_KM = 0.05; // 50m - filter out likely parked/stationary vehicles
+  const MAX_DATA_AGE_SECONDS = 300; // 5 minutes - reject stale vehicle data
 
   for (const entity of vehicles) {
     const vehicle = entity.vehicle;
     if (!vehicle?.position) continue;
 
+    // Check data freshness - timestamp indicates when vehicle last reported
+    if (vehicle.timestamp?.low) {
+      const reportedAt = new Date(vehicle.timestamp.low * 1000);
+      const dataAgeSeconds = (now.getTime() - reportedAt.getTime()) / 1000;
+
+      // Skip stale data (vehicle hasn't reported recently - likely not in service)
+      if (dataAgeSeconds > MAX_DATA_AGE_SECONDS) {
+        continue;
+      }
+    }
+
     const { latitude, longitude, bearing } = vehicle.position;
+
+    // Require valid bearing data to ensure vehicle is actually moving
+    if (bearing === undefined || bearing === null) continue;
 
     // Calculate distance to stop
     const distanceKm = haversineDistance(latitude, longitude, stop.lat, stop.lon);
@@ -328,10 +332,13 @@ function estimateArrivalsFromVehicles(
     // Skip if too far
     if (distanceKm > MAX_SEARCH_RADIUS_KM) continue;
 
+    // Skip if too close (likely parked at/near the stop)
+    if (distanceKm < MIN_DISTANCE_KM) continue;
+
     // Calculate bearing from vehicle to stop
     const bearingToStop = calculateBearing(latitude, longitude, stop.lat, stop.lon);
 
-    // Check if vehicle is heading towards the stop
+    // Check if vehicle is heading towards the stop (no longer allow missing bearing)
     if (!isHeadingTowardsStop(bearing, bearingToStop)) continue;
 
     // Estimate arrival time

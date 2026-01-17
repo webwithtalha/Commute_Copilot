@@ -21,7 +21,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMapsStore, type SortBy } from "@/store";
 import { StopCard } from "./stop-card";
 import { cn } from "@/lib/utils";
@@ -180,12 +179,12 @@ export function MapsPanel({ onLocate, onSearchLocation }: MapsPanelProps) {
     <div className={cn(
       "z-[1000]",
       // Mobile: bottom sheet style
-      "fixed inset-x-0 bottom-0 h-[50vh] sm:h-auto",
-      // Desktop: floating sidebar overlay
-      "sm:absolute sm:top-4 sm:left-4 sm:bottom-4 sm:w-[360px] md:w-[380px]",
+      "fixed inset-x-0 bottom-0 h-[60vh] max-h-[80vh]",
+      // Desktop: floating sidebar overlay with full height
+      "sm:absolute sm:top-4 sm:left-4 sm:bottom-4 sm:h-auto sm:max-h-none sm:w-[360px] md:w-[380px]",
       "bg-background/95 backdrop-blur-md",
       "border sm:rounded-xl shadow-2xl",
-      "flex flex-col"
+      "flex flex-col overflow-hidden"
     )}>
       {/* Mobile drag handle */}
       <div className="sm:hidden flex justify-center pt-2 pb-1">
@@ -215,7 +214,7 @@ export function MapsPanel({ onLocate, onSearchLocation }: MapsPanelProps) {
       </div>
 
       {/* Location Search */}
-      <div className="p-3 border-b">
+      <div className="px-4 py-3 border-b">
         <div className="relative">
           <MapPinned className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -290,7 +289,7 @@ export function MapsPanel({ onLocate, onSearchLocation }: MapsPanelProps) {
       </div>
 
       {/* Filter and Sort */}
-      <div className="p-3 border-b space-y-2">
+      <div className="px-4 py-3 border-b space-y-2">
         {/* Filter stops search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -356,9 +355,9 @@ export function MapsPanel({ onLocate, onSearchLocation }: MapsPanelProps) {
         </div>
       </div>
 
-      {/* Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-3 space-y-2">
+      {/* Content - scrollable area */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+        <div className="space-y-2 pb-6">
           {/* Loading state */}
           {isLoadingStops && (
             <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -427,7 +426,7 @@ export function MapsPanel({ onLocate, onSearchLocation }: MapsPanelProps) {
               />
             ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
