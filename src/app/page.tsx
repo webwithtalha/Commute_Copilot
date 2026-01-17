@@ -11,6 +11,7 @@ import {
   MapView,
   type SidebarView,
 } from "@/components";
+import { cn } from "@/lib/utils";
 
 export default function HomePage() {
   const [currentView, setCurrentView] = useState<SidebarView>("search");
@@ -36,7 +37,10 @@ export default function HomePage() {
   const isMapView = currentView === "map";
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className={cn(
+      "flex flex-col bg-background",
+      isMapView ? "h-[100dvh] overflow-hidden" : "min-h-screen"
+    )}>
       {/* Hide header on map view for more space */}
       {!isMapView && <Header />}
 

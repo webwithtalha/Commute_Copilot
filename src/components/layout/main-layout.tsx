@@ -33,8 +33,8 @@ export function MainLayout({ children, renderContent, onViewChange, className }:
 
         {/* Main content area */}
         <main className={cn(
-          "flex-1",
-          isMapView ? "overflow-hidden relative" : "overflow-auto"
+          "flex-1 min-h-0",
+          isMapView ? "overflow-hidden relative h-full" : "overflow-auto"
         )}>
           {renderContent ? renderContent(activeView) : children}
         </main>

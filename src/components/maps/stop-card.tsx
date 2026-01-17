@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Star, Clock, ChevronRight, Bus } from "lucide-react";
+import { MapPin, Star, Clock, ChevronRight, Bus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useMapsStore, formatDistance, getDistanceFromUser } from "@/store";
@@ -13,7 +13,9 @@ interface StopCardProps {
   stop: Stop;
   isSelected?: boolean;
   isExpanded?: boolean;
+  isCompact?: boolean;
   onClick?: () => void;
+  onClose?: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -22,7 +24,63 @@ function formatTime(seconds: number): string {
   return `${mins} min`;
 }
 
-// Collapsed card view
+// Compact card view for mobile list
+function CompactCard({ stop, isSelected, onClick }: StopCardProps) {
+  const { userLocation } = useMapsStore();
+  const { isFavorite } = useFavorites();
+  const distance = getDistanceFromUser(stop, userLocation);
+  const favorite = isFavorite(stop.naptanId);
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full text-left p-2.5 rounded-lg border transition-all",
+        "hover:bg-accent active:scale-[0.98]",
+        isSelected
+          ? "bg-primary/10 border-primary"
+          : "bg-card border-border"
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        {/* Bus icon */}
+        <div className={cn(
+          "w-9 h-9 flex items-center justify-center flex-shrink-0 rounded-full",
+          isSelected ? "bg-primary text-primary-foreground" : "bg-primary/90 text-primary-foreground"
+        )}>
+          <Bus className="w-4 h-4" />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <h4 className="font-medium text-sm text-foreground truncate">{stop.name}</h4>
+            {favorite && <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 flex-shrink-0" />}
+          </div>
+
+          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
+            {distance !== null && (
+              <span className="flex items-center gap-0.5">
+                <MapPin className="w-3 h-3" />
+                {formatDistance(distance)}
+              </span>
+            )}
+            {stop.lines && stop.lines.length > 0 && (
+              <>
+                <span>•</span>
+                <span className="truncate">{stop.lines.slice(0, 3).join(", ")}{stop.lines.length > 3 ? "..." : ""}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+      </div>
+    </button>
+  );
+}
+
+// Collapsed card view (default for desktop list)
 function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
   const { userLocation } = useMapsStore();
   const { isFavorite } = useFavorites();
@@ -43,13 +101,10 @@ function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
       <div className="flex items-center gap-3">
         {/* Stop indicator */}
         <div className={cn(
-          "h-10 flex items-center justify-center flex-shrink-0",
-          "bg-primary text-primary-foreground font-bold",
-          stop.stopLetter && stop.stopLetter.length > 2
-            ? "min-w-10 px-2 rounded-full text-xs"
-            : "w-10 rounded-full text-sm"
+          "w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-full",
+          "bg-primary text-primary-foreground"
         )}>
-          {stop.stopLetter || <Bus className="w-5 h-5" />}
+          <Bus className="w-5 h-5" />
         </div>
 
         {/* Content */}
@@ -65,7 +120,7 @@ function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
             )}
             {distance !== null && (
               <>
-                <span>•</span>
+                {stop.stopCode && <span>•</span>}
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3 h-3" />
                   {formatDistance(distance)}
@@ -82,7 +137,7 @@ function CollapsedCard({ stop, isSelected, onClick }: StopCardProps) {
 }
 
 // Expanded card view with arrivals
-function ExpandedCard({ stop, onClick }: StopCardProps) {
+function ExpandedCard({ stop, onClick, onClose }: StopCardProps) {
   const { userLocation } = useMapsStore();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const { arrivals, isLoading } = useArrivals(stop.naptanId, {
@@ -103,25 +158,19 @@ function ExpandedCard({ stop, onClick }: StopCardProps) {
   };
 
   return (
-    <div className="bg-card border border-primary rounded-lg shadow-lg overflow-hidden">
+    <div className="bg-card">
       {/* Header */}
-      <div className="p-4 border-b">
-        <div className="flex items-center gap-3">
+      <div className="p-3 sm:p-4 border-b">
+        <div className="flex items-start gap-3">
           {/* Stop indicator badge */}
-          <div className={cn(
-            "h-12 flex items-center justify-center flex-shrink-0",
-            "bg-primary text-primary-foreground font-bold",
-            stop.stopLetter && stop.stopLetter.length > 2
-              ? "min-w-12 px-3 rounded-full text-base"
-              : "w-12 rounded-full text-lg"
-          )}>
-            {stop.stopLetter || <Bus className="w-6 h-6" />}
+          <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0 bg-primary text-primary-foreground rounded-full">
+            <Bus className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
 
           {/* Stop info */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground text-lg">{stop.name}</h3>
-            <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground">
+            <h3 className="font-semibold text-foreground text-base sm:text-lg leading-tight">{stop.name}</h3>
+            <div className="flex items-center gap-1.5 mt-1 text-xs sm:text-sm text-muted-foreground">
               {stop.stopCode && (
                 <span className="font-mono">{stop.stopCode}</span>
               )}
@@ -135,66 +184,86 @@ function ExpandedCard({ stop, onClick }: StopCardProps) {
             </div>
           </div>
 
-          {/* Favorite button */}
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleFavoriteClick}
-            className="h-8 w-8 flex-shrink-0"
-          >
-            <Star className={cn(
-              "w-4 h-4",
-              favorite ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"
-            )} />
-          </Button>
+          {/* Actions */}
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleFavoriteClick}
+              className="h-8 w-8"
+            >
+              <Star className={cn(
+                "w-4 h-4",
+                favorite ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"
+              )} />
+            </Button>
+            {onClose && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="h-8 w-8"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Lines */}
         {stop.lines && stop.lines.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            {stop.lines.map((line) => (
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            {stop.lines.slice(0, 8).map((line) => (
               <Badge key={line} variant="secondary" className="text-xs">
                 {line}
               </Badge>
             ))}
+            {stop.lines.length > 8 && (
+              <Badge variant="outline" className="text-xs">
+                +{stop.lines.length - 8}
+              </Badge>
+            )}
           </div>
         )}
       </div>
 
       {/* Arrivals */}
-      <div className="p-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-3">
+      <div className="p-3 sm:p-4">
+        <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground mb-2">
           <Clock className="w-4 h-4" />
           Next arrivals
         </div>
 
         {isLoading ? (
-          <div className="text-sm text-muted-foreground py-2">Loading arrivals...</div>
+          <div className="text-xs sm:text-sm text-muted-foreground py-2">Loading arrivals...</div>
         ) : arrivals && arrivals.length > 0 ? (
-          <div className="space-y-2">
-            {arrivals.slice(0, 5).map((arrival, index) => (
+          <div className="space-y-1.5">
+            {arrivals.slice(0, 4).map((arrival, index) => (
               <div
                 key={`${arrival.id}-${index}`}
                 className="flex items-center justify-between py-1.5 px-2 rounded bg-muted/50"
               >
-                <div className="flex items-center gap-2">
-                  <Badge className="text-xs font-bold">{arrival.lineName}</Badge>
-                  <span className="text-sm truncate max-w-[120px]">{arrival.destination}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Badge className="text-xs font-bold flex-shrink-0">{arrival.lineName}</Badge>
+                  <span className="text-xs sm:text-sm truncate">{arrival.destination}</span>
                 </div>
-                <span className="font-mono font-bold text-primary text-sm">
+                <span className="font-mono font-bold text-primary text-xs sm:text-sm flex-shrink-0 ml-2">
                   {formatTime(arrival.timeToStation)}
                 </span>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-sm text-muted-foreground py-2">No arrivals scheduled</div>
+          <div className="text-xs sm:text-sm text-muted-foreground py-2">No arrivals scheduled</div>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="p-4 pt-0">
-        <Button className="w-full" onClick={onClick}>
+      {/* Action button */}
+      <div className="p-3 sm:p-4 pt-0">
+        <Button className="w-full h-9 sm:h-10 text-sm" onClick={onClick}>
           View full details
         </Button>
       </div>
@@ -202,9 +271,12 @@ function ExpandedCard({ stop, onClick }: StopCardProps) {
   );
 }
 
-export function StopCard({ stop, isSelected, isExpanded, onClick }: StopCardProps) {
+export function StopCard({ stop, isSelected, isExpanded, isCompact, onClick, onClose }: StopCardProps) {
   if (isExpanded) {
-    return <ExpandedCard stop={stop} onClick={onClick} />;
+    return <ExpandedCard stop={stop} onClick={onClick} onClose={onClose} />;
+  }
+  if (isCompact) {
+    return <CompactCard stop={stop} isSelected={isSelected} onClick={onClick} />;
   }
   return <CollapsedCard stop={stop} isSelected={isSelected} onClick={onClick} />;
 }

@@ -92,12 +92,25 @@ export function MapView() {
   useEffect(() => {
     if (!mapLibre || !mapContainerRef.current || mapRef.current) return;
 
+    console.log('Initializing map...', {
+      container: mapContainerRef.current,
+      containerSize: {
+        width: mapContainerRef.current.clientWidth,
+        height: mapContainerRef.current.clientHeight
+      },
+      style: getStyleUrl()
+    });
+
     const map = new mapLibre.Map({
       container: mapContainerRef.current,
       style: getStyleUrl(),
       center: [mapCenter[1], mapCenter[0]], // MapLibre uses [lng, lat]
       zoom: mapZoom,
       attributionControl: false,
+    });
+
+    map.on('error', (e) => {
+      console.error('Map error:', e);
     });
 
     map.addControl(
@@ -400,23 +413,38 @@ export function MapView() {
   };
 
   return (
-    <div className="relative w-full h-screen">
+    <div className="fixed inset-0 w-screen h-screen">
       {/* Map container - full screen */}
-      <div ref={mapContainerRef} className="absolute inset-0 z-0" />
+      <div
+        ref={mapContainerRef}
+        className="w-full h-full"
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
 
-      {/* Mini header for map view - branding + city selector */}
-      <div className="absolute top-0 left-0 right-0 z-[1001] pointer-events-none">
-        <div className="flex items-center justify-between p-3">
+      {/* Mini header for map view - compact branding */}
+      <div className="absolute top-3 left-3 z-[1001] pointer-events-none sm:hidden">
+        <div className="pointer-events-auto">
+          <a href="/" className="flex items-center gap-1.5 bg-background/95 backdrop-blur px-3 py-1.5 rounded-full shadow-lg border">
+            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs">
+              CC
+            </div>
+          </a>
+        </div>
+      </div>
+
+      {/* Desktop header */}
+      <div className="hidden sm:block absolute top-0 left-0 right-0 z-[1001] pointer-events-none">
+        <div className="flex items-center justify-between p-4">
           {/* Left spacer for panel */}
-          <div className="w-[380px] hidden sm:block" />
+          <div className="w-[380px]" />
 
-          {/* Center - App name (clickable to go back) */}
+          {/* Center - App name */}
           <div className="pointer-events-auto">
-            <a href="/" className="flex items-center gap-2 bg-background/90 backdrop-blur px-4 py-2 rounded-full shadow-lg border">
+            <a href="/" className="flex items-center gap-2 bg-background/95 backdrop-blur px-4 py-2 rounded-full shadow-lg border">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
                 CC
               </div>
-              <span className="font-semibold text-foreground hidden sm:inline">Commute Copilot</span>
+              <span className="font-semibold text-foreground">Commute Copilot</span>
             </a>
           </div>
 
@@ -437,9 +465,9 @@ export function MapView() {
         currentZoom={mapZoom}
       />
 
-      {/* Error toast */}
+      {/* Error toast - positioned above mobile sheet */}
       {locationError && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1001] bg-destructive text-destructive-foreground px-4 py-2 rounded-lg shadow-lg text-sm">
+        <div className="absolute bottom-[calc(45vh+16px)] sm:bottom-4 left-1/2 -translate-x-1/2 z-[1002] bg-destructive text-destructive-foreground px-4 py-2 rounded-lg shadow-lg text-sm">
           {locationError}
         </div>
       )}

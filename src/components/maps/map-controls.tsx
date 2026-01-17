@@ -42,11 +42,15 @@ export function MapControls({
   return (
     <>
       {/* Top right controls */}
-      <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2">
+      <div className="absolute top-3 sm:top-4 right-3 sm:right-4 z-[1000] flex items-center gap-1.5 sm:gap-2">
         {/* Map style selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="bg-background shadow-lg">
+            <Button
+              variant="outline"
+              size="icon"
+              className="bg-background/95 backdrop-blur shadow-lg h-9 w-9 sm:h-10 sm:w-10"
+            >
               {mapStyle === "satellite" ? (
                 <Satellite className="w-4 h-4" />
               ) : (
@@ -75,15 +79,20 @@ export function MapControls({
         <ThemeToggle />
       </div>
 
-      {/* Bottom right controls */}
-      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
+      {/* Bottom right controls - positioned above the mobile sheet */}
+      <div className={cn(
+        "absolute right-3 sm:right-4 z-[999]",
+        "flex flex-col gap-1.5 sm:gap-2",
+        // Mobile: position above the bottom sheet (45vh default)
+        "bottom-[calc(45vh+16px)] sm:bottom-4"
+      )}>
         {/* Locate button */}
         <Button
           variant="outline"
           size="icon"
           onClick={onLocate}
           disabled={isLocating}
-          className="bg-background shadow-lg"
+          className="bg-background/95 backdrop-blur shadow-lg h-9 w-9 sm:h-10 sm:w-10"
           title="Find my location"
         >
           {isLocating ? (
@@ -98,20 +107,20 @@ export function MapControls({
           variant="outline"
           size="icon"
           onClick={onResetView}
-          className="bg-background shadow-lg"
+          className="bg-background/95 backdrop-blur shadow-lg h-9 w-9 sm:h-10 sm:w-10"
           title="Reset view"
         >
           <RotateCcw className="w-4 h-4" />
         </Button>
 
         {/* Zoom controls */}
-        <div className="flex flex-col bg-background rounded-md shadow-lg border overflow-hidden">
+        <div className="flex flex-col bg-background/95 backdrop-blur rounded-md shadow-lg border overflow-hidden">
           <Button
             variant="ghost"
             size="icon"
             onClick={onZoomIn}
             disabled={currentZoom >= maxZoom}
-            className="rounded-none border-b h-9 w-9"
+            className="rounded-none border-b h-8 w-8 sm:h-9 sm:w-9"
             title="Zoom in"
           >
             <Plus className="w-4 h-4" />
@@ -121,7 +130,7 @@ export function MapControls({
             size="icon"
             onClick={onZoomOut}
             disabled={currentZoom <= minZoom}
-            className="rounded-none h-9 w-9"
+            className="rounded-none h-8 w-8 sm:h-9 sm:w-9"
             title="Zoom out"
           >
             <Minus className="w-4 h-4" />
