@@ -26,7 +26,7 @@ export { ThemeToggle } from "./theme-toggle";
 export { NavItem, Sidebar, MobileNav, MainLayout, type SidebarView } from "./layout";
 
 // View components
-export { SearchView, FavoritesView, RecentsView, MapView } from "./views";
+export { SearchView, FavoritesView, RecentsView, MapView, AssistantView } from "./views";
 
 // Re-export shadcn/ui components
 export { Badge } from "./ui/badge";

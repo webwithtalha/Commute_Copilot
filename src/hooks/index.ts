@@ -10,4 +10,5 @@ export { useArrivals, type UseArrivalsReturn } from './use-arrivals';
 export { useStopDetails, type UseStopDetailsReturn } from './use-stop-details';
 export { useGeolocation, type UseGeolocationReturn, type GeolocationPosition } from './use-geolocation';
 export { useNearbyStops, type UseNearbyStopsReturn } from './use-nearby-stops';
+export { useJourneyPlanner, type UseJourneyPlannerReturn } from './use-journey-planner';
 

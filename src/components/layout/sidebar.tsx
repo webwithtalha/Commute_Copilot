@@ -1,11 +1,11 @@
 "use client";
 
-import { Search, Star, Clock, Map } from "lucide-react";
+import { Search, Star, Clock, Map, Bot } from "lucide-react";
 import { NavItem } from "./nav-item";
 import { useFavorites, useRecents } from "@/context";
 import { cn } from "@/lib/utils";
 
-export type SidebarView = "search" | "favorites" | "recents" | "map";
+export type SidebarView = "search" | "favorites" | "recents" | "map" | "assistant";
 
 interface SidebarProps {
   activeView: SidebarView;
@@ -22,6 +22,12 @@ export function Sidebar({ activeView, onViewChange, className }: SidebarProps) {
       id: "search" as const,
       icon: Search,
       label: "Search",
+      count: null,
+    },
+    {
+      id: "assistant" as const,
+      icon: Bot,
+      label: "AI Planner",
       count: null,
     },
     {
@@ -89,6 +95,12 @@ export function MobileNav({ activeView, onViewChange, className }: MobileNavProp
       id: "search" as const,
       icon: Search,
       label: "Search",
+      count: null,
+    },
+    {
+      id: "assistant" as const,
+      icon: Bot,
+      label: "AI Planner",
       count: null,
     },
     {

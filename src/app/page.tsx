@@ -9,6 +9,7 @@ import {
   FavoritesView,
   RecentsView,
   MapView,
+  AssistantView,
   type SidebarView,
 } from "@/components";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,8 @@ export default function HomePage() {
     switch (activeView) {
       case "map":
         return <MapView />;
+      case "assistant":
+        return <AssistantView />;
       case "favorites":
         return <FavoritesView />;
       case "recents":
